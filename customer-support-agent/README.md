@@ -265,3 +265,13 @@ For production: Build with the desired script (e.g., npm run build:right)
 
 These scripts set the appropriate environment variables before running or building the application, allowing you to easily switch between different configurations.
 This flexibility allows you to tailor the application's layout to your specific needs, whether for testing, development, or production deployment.
+
+## Appendix
+
+This project is a prototype and is provided on an "as-is" basis. It is not intended for production use and may contain bugs, errors, or inconsistencies. By using this prototype, you acknowledge and agree that:
+- The software is provided in a pre-release, beta, or trial form.
+- It may not be suitable for production or mission-critical environments.
+- The developers are not responsible for any issues, data loss, or damages resulting from its use.
+- No warranties or guarantees of any kind are provided, either expressed or implied.
+- Support for this prototype may be limited or unavailable.
+- Use of this prototype is at your own risk. We encourage you to report any issues or provide feedback to help improve future versions.
