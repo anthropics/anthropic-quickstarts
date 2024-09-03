@@ -1,0 +1,92 @@
+{
+  "categories": [
+    {
+      "id": "account",
+      "name": "Account",
+      "keywords": [
+        "ban",
+        "appeal",
+        "deletion",
+        "logging in",
+        "phone verification",
+        "roles",
+        "permissions"
+      ]
+    },
+    {
+      "id": "billing",
+      "name": "Billing",
+      "keywords": [
+        "AR",
+        "billing details",
+        "invoice",
+        "receipt",
+        "payment method",
+        "pricing",
+        "refund request",
+        "subscription management",
+        "taxes"
+      ]
+    },
+    {
+      "id": "feature",
+      "name": "Feature",
+      "keywords": [
+        "artifacts",
+        "chats",
+        "knowledge bases",
+        "projects",
+        "prompt evaluator",
+        "prompt generator",
+        "workbench"
+      ]
+    },
+    {
+      "id": "internal",
+      "name": "Internal",
+      "keywords": [
+        "auto-reply",
+        "forward",
+        "ignore",
+        "spam",
+        "other",
+        "sales reroute"
+      ]
+    },
+    {
+      "id": "legal",
+      "name": "Legal",
+      "keywords": ["data privacy", "policy", "terms of service", "usage policy"]
+    },
+    {
+      "id": "other",
+      "name": "Other",
+      "keywords": ["job inquiry", "3rd party company"]
+    },
+    {
+      "id": "technical",
+      "name": "Technical",
+      "keywords": [
+        "documentation",
+        "error message",
+        "leaked API key",
+        "outage",
+        "platform performance",
+        "security concerns",
+        "user interface"
+      ]
+    },
+    {
+      "id": "usage",
+      "name": "Usage",
+      "keywords": [
+        "hallucinations",
+        "model capabilities",
+        "output quality",
+        "prompting techniques",
+        "rate limits",
+        "regional availability"
+      ]
+    }
+  ]
+}
