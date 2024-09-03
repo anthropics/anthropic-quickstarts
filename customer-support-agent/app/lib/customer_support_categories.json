@@ -32,13 +32,12 @@
       "id": "feature",
       "name": "Feature",
       "keywords": [
-        "artifacts",
-        "chats",
-        "knowledge bases",
-        "projects",
-        "prompt evaluator",
-        "prompt generator",
-        "workbench"
+        "functionality",
+        "tools",
+        "capabilities",
+        "options",
+        "modules",
+        "features"
       ]
     },
     {
@@ -67,25 +66,25 @@
       "id": "technical",
       "name": "Technical",
       "keywords": [
-        "documentation",
-        "error message",
-        "leaked API key",
-        "outage",
-        "platform performance",
-        "security concerns",
-        "user interface"
+        "guides",
+        "issue",
+        "security",
+        "downtime",
+        "performance",
+        "interface",
+        "system"
       ]
     },
     {
       "id": "usage",
       "name": "Usage",
       "keywords": [
-        "hallucinations",
-        "model capabilities",
-        "output quality",
-        "prompting techniques",
-        "rate limits",
-        "regional availability"
+        "errors",
+        "capabilities",
+        "quality",
+        "techniques",
+        "limits",
+        "availability"
       ]
     }
   ]
