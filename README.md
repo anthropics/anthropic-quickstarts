@@ -44,7 +44,3 @@ We welcome contributions to the Anthropic Quickstarts repository! If you have id
 ## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
----
-
-Happy building with Anthropic! We can't wait to see what you create.
