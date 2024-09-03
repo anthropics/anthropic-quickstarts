@@ -139,7 +139,7 @@ const TopNavBar = () => {
           </DropdownMenuContent>
         </DropdownMenu>
         <Link
-          href="https://github.com/anthropic-experimental/ignite-customer-support-agent-demo"
+          href="https://github.com/anthropics/anthropic-quickstarts"
           target="_blank"
           rel="noopener noreferrer"
         >
