@@ -124,7 +124,7 @@ export async function POST(req: Request) {
 
   const categoriesContext = USE_CATEGORIES
     ? `
-    To help with our internal classification of inquries, we would like you to categorize inquiries in addition to answering the. We have provided you with ${customerSupportCategories.categories.length} customer support categories.
+    To help with our internal classification of inquries, we would like you to categorize inquiries in addition to answering them. We have provided you with ${customerSupportCategories.categories.length} customer support categories.
     Check if your response fits into any category and include the category IDs in your "matched_categories" array.
     The available categories are: ${categoryListString}
     If multiple categories match, include multiple category IDs. If no categories match, return an empty array.
