@@ -66,9 +66,9 @@ Follow these steps to obtain your AWS credentials:
 Note: Make sure to keep your keys secure and never share them publicly.
 
 
-##  AWS Bedrock RAG Integration
+##  Amazon Bedrock RAG Integration
 
-This project utilizes AWS Bedrock for Retrieval-Augmented Generation (RAG). To set up:
+This project utilizes Amazon Bedrock for Retrieval-Augmented Generation (RAG). To set up:
 
 1. Ensure you have an AWS account with Bedrock access.
 2. Create a Bedrock knowledge base in your desired AWS region.
