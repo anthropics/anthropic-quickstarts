@@ -6,7 +6,7 @@ An advanced, fully customizable customer support chat interface powered by Claud
 ## Key Features
 
 -  AI-powered chat using Anthropic's Claude model
--  Amazong Bedrock integration for contextual knowledge retrieval
+-  Amazon Bedrock integration for contextual knowledge retrieval
 -  Real-time thinking & debug information display
 -  Knowledge base source visualization
 -  User mood detection & appropriate agent redirection
