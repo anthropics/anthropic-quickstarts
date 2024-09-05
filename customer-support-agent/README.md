@@ -53,7 +53,7 @@ Follow these steps to obtain your AWS credentials:
 4. Click "Create user" and follow the prompts to create a new user
    ![Add User](tutorial/create-user.png)
 5. On the Set Permission page, select the "Attach policies directly" policy
-   ![Attach Policy](tutorial/aws-attach-policy.png)
+   ![Attach Policy](tutorial/attach.png)
 5. On the permissions page, use the "AmazonBedrockFullAccess" policy
    ![Attach Policy](tutorial/bedrock.png)
 6. Review and create the user
