@@ -30,7 +30,7 @@ BAWS_ACCESS_KEY_ID=your_aws_access_key
 BAWS_SECRET_ACCESS_KEY=your_aws_secret_key
 ```
 
-Note: We are adding a 'B' in front of the AWS environment variables for a reason that will be discussed later the the deployment section.
+Note: We are adding a 'B' in front of the AWS environment variables for a reason that will be discussed later in the deployment section.
 
 ##  How to Get Your Keys
 
