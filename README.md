@@ -14,6 +14,12 @@ Our first quickstart project is a customer support agent powered by Claude. This
 
 [Go to Customer Support Agent Quickstart](./customer-support-agent)
 
+2. Financial Data Analyst
+
+Our second quickstart is a financial data analyst powered by Claude. This project demonstrates how to leverage Claude's capabilities with interactive data visualization to analyze financial data via chat.
+
+[Go to Financial Data Analyst Quickstart](./financial-data-analyst)
+
 ## General Usage
 
 Each quickstart project comes with its own README and setup instructions. Generally, you'll follow these steps:
