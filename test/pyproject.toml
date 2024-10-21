@@ -1,0 +1,7 @@
+[tool.pyright]
+venvPath = "."
+venv = ".venv"
+useLibraryCodeForTypes = false
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
