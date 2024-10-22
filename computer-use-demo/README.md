@@ -54,7 +54,7 @@ You have a few options for authenticating with Bedrock. See the [boto3 documenta
 #### Option 1: (suggested) Use the host's AWS credentials file and AWS profile
 
 ```bash
-export AWS_PROFILE=
+export AWS_PROFILE=<your_aws_profile>
 docker run \
     -e API_PROVIDER=bedrock \
     -e AWS_PROFILE=$AWS_PROFILE \
