@@ -114,6 +114,7 @@ docker run \
     -p 8080:8080 \
     -it computer-use-demo
 ```
+Once the app starts up, you should see a message like `✨ Computer Use Demo is ready!`, after which the demo app will be available at http://localhost:8080.
 
 This example shows how to use the Google Cloud Application Default Credentials to authenticate with Vertex.
 
