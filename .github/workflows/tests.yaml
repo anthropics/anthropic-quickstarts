@@ -1,9 +1,13 @@
 name: tests
 on:
-  pull_request: {}
+  pull_request:
+    paths:
+     - computer-use-demo/**
   push:
     branches:
       - main
+    paths:
+     - computer-use-demo/**
 jobs:
   ruff:
     runs-on: ubuntu-latest

@@ -86,7 +86,7 @@ jobs:
         uses: docker/build-push-action@v5
         with:
           platforms: linux/${{ matrix.platform }}
-          context: .
+          context: computer-use-demo
           push: true
           tags: ${{ env.PUSH_TAGS }}
           cache-from: type=gha,scope=computer-use-${{ matrix.platform }}
