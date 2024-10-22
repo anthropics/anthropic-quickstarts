@@ -61,8 +61,6 @@ def setup_state():
         st.session_state.api_key = load_from_storage("api_key") or os.getenv(
             "ANTHROPIC_API_KEY", ""
         )
-    if "api_key_input" not in st.session_state:
-        st.session_state.api_key_input = st.session_state.api_key
     if "provider" not in st.session_state:
         st.session_state.provider = (
             os.getenv("API_PROVIDER", "anthropic") or APIProvider.ANTHROPIC
@@ -124,14 +122,10 @@ async def main():
         if st.session_state.provider == APIProvider.ANTHROPIC:
             st.text_input(
                 "Anthropic API Key",
-                value=st.session_state.api_key,
                 type="password",
-                key="api_key_input",
-                on_change=lambda: save_to_storage(
-                    "api_key", st.session_state.api_key_input
-                ),
+                key="api_key",
+                on_change=lambda: save_to_storage("api_key", st.session_state.api_key),
             )
-            st.session_state.api_key = st.session_state.api_key_input
 
         st.number_input(
             "Only send N most recent images",
