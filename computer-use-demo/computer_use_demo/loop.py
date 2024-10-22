@@ -10,8 +10,6 @@ from typing import Any, cast
 
 from anthropic import Anthropic, AnthropicBedrock, AnthropicVertex, APIResponse
 from anthropic.types import (
-    MessageParam,
-    ToolParam,
     ToolResultBlockParam,
 )
 from anthropic.types.beta import (
@@ -21,7 +19,6 @@ from anthropic.types.beta import (
     BetaMessage,
     BetaMessageParam,
     BetaTextBlockParam,
-    BetaToolParam,
     BetaToolResultBlockParam,
 )
 
@@ -95,39 +92,25 @@ async def sampling_loop(
         if only_n_most_recent_images:
             _maybe_filter_to_n_most_recent_images(messages, only_n_most_recent_images)
 
+        if provider == APIProvider.ANTHROPIC:
+            client = Anthropic(api_key=api_key)
+        elif provider == APIProvider.VERTEX:
+            client = AnthropicVertex()
+        elif provider == APIProvider.BEDROCK:
+            client = AnthropicBedrock()
+
         # Call the API
         # we use raw_response to provide debug information to streamlit. Your
         # implementation may be able call the SDK directly with:
         # `response = client.messages.create(...)` instead.
-        if provider == APIProvider.ANTHROPIC:
-            raw_response = Anthropic(
-                api_key=api_key
-            ).beta.messages.with_raw_response.create(
-                max_tokens=max_tokens,
-                messages=messages,
-                model=model,
-                system=system,
-                tools=cast(list[BetaToolParam], tool_collection.to_params()),
-                extra_headers={"anthropic-beta": BETA_FLAG},
-            )
-        elif provider == APIProvider.VERTEX:
-            raw_response = AnthropicVertex().messages.with_raw_response.create(
-                max_tokens=max_tokens,
-                messages=cast(list[MessageParam], messages),
-                model=model,
-                system=system,
-                tools=cast(list[ToolParam], tool_collection.to_params()),
-                extra_headers={"anthropic-beta": BETA_FLAG},
-            )
-        elif provider == APIProvider.BEDROCK:
-            raw_response = AnthropicBedrock().messages.with_raw_response.create(
-                max_tokens=max_tokens,
-                messages=cast(list[MessageParam], messages),
-                model=model,
-                system=system,
-                tools=cast(list[ToolParam], tool_collection.to_params()),
-                extra_body={"anthropic_beta": [BETA_FLAG]},
-            )
+        raw_response = client.beta.messages.with_raw_response.create(
+            max_tokens=max_tokens,
+            messages=messages,
+            model=model,
+            system=system,
+            tools=tool_collection.to_params(),
+            betas=["computer-use-2024-10-22"],
+        )
 
         api_response_callback(cast(APIResponse[BetaMessage], raw_response))
 
