@@ -48,6 +48,7 @@ Once the container is running, open your browser to [http://localhost:8080](http
 The container stores settings like API key and custom system prompt in `~/.anthropic/`. Mount this directory to persist these settings between container runs.
 
 Alternative access points:
+
 - Streamlit interface only: [http://localhost:8501](http://localhost:8501)
 - Desktop view only: [http://localhost:6080/vnc.html](http://localhost:6080/vnc.html)
 - Direct VNC connection: `vnc://localhost:5900` (for VNC clients)
@@ -94,6 +95,7 @@ docker run \
 ```
 
 ### Vertex
+
 You'll need to pass in Google Cloud credentials with appropriate permissions to use Claude on Vertex.
 
 ```bash
@@ -112,11 +114,13 @@ docker run \
     -p 8080:8080 \
     -it computer-use-demo
 ```
+
 This example shows how to use the Google Cloud Application Default Credentials to authenticate with Vertex.
 
 You can also set `GOOGLE_APPLICATION_CREDENTIALS` to use an arbitrary credential file, see the [Google Cloud Authentication documentation](https://cloud.google.com/docs/authentication/application-default-credentials#GAC) for more details.
 
 ## Screen size
+
 Environment variables `WIDTH` and `HEIGHT` can be used to set the screen size. For example:
 
 ```bash
@@ -137,6 +141,7 @@ We do not recommend sending screenshots in resolutions above [XGA/WXGA](https://
 Relying on the image resizing behavior in the API will result in lower model accuracy and slower performance than implementing scaling in your tools directly. The `computer` tool implementation in this project demonstrates how to scale both images and coordinates from higher resolutions to the suggested resolutions.
 
 ## Development
+
 ```bash
 ./setup.sh  # configure venv, install development dependencies, and install pre-commit hooks
 docker build . -t computer-use-demo:local  # manually build the docker image (optional)
@@ -151,4 +156,5 @@ docker run \
     -p 8080:8080 \
     -it computer-use-demo:local  # can also use ghcr.io/anthropics/anthropic-quickstarts:computer-use-demo-latest
 ```
+
 The docker run command above mounts the repo inside the docker image, such that you can edit files from the host. Streamlit is already configured with auto reloading.
