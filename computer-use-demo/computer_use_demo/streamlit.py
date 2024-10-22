@@ -114,7 +114,6 @@ async def main():
         st.radio(
             "API Provider",
             options=provider_options,
-            index=provider_options.index(st.session_state.provider),
             key="provider_radio",
             format_func=lambda x: x.title(),
             on_change=_reset_api_provider,

@@ -2,6 +2,8 @@ from collections import defaultdict
 from pathlib import Path
 from typing import Literal, get_args
 
+from anthropic.types.beta import BetaToolTextEditor20241022Param
+
 from .base import BaseAnthropicTool, CLIResult, ToolError, ToolResult
 from .run import maybe_truncate, run
 
@@ -21,14 +23,20 @@ class EditTool(BaseAnthropicTool):
     The tool parameters are defined by Anthropic and are not editable.
     """
 
-    api_type = "text_editor_20241022"
-    name = "str_replace_editor"
+    api_type: Literal["text_editor_20241022"] = "text_editor_20241022"
+    name: Literal["str_replace_editor"] = "str_replace_editor"
 
     _file_history: dict[Path, list[str]]
 
     def __init__(self):
         self._file_history = defaultdict(list)
         super().__init__()
+
+    def to_params(self) -> BetaToolTextEditor20241022Param:
+        return {
+            "name": self.name,
+            "type": self.api_type,
+        }
 
     async def __call__(
         self,
