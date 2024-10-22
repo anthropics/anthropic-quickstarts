@@ -113,7 +113,7 @@ You can also set `GOOGLE_APPLICATION_CREDENTIALS` to use an arbitrary credential
 
 Once the container is running, open your browser to [http://localhost:8080](http://localhost:8080) to access the combined interface that includes both the agent chat and desktop view.
 
-The container stores settings like API key and custom system prompt in `~/.anthropic/`. Mount this directory to persist these settings between container runs.
+The container stores settings like the API key and custom system prompt in `~/.anthropic/`. Mount this directory to persist these settings between container runs.
 
 Alternative access points:
 
