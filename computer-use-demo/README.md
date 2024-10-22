@@ -14,7 +14,7 @@
 
 This repository helps you get started with computer use on Claude, with reference implementations of:
 
-* Build files to create a Docker container with all nescessary dependencies
+* Build files to create a Docker container with all necessary dependencies
 * A computer use agent loop using the Anthropic API, Bedrock, or Vertex to access the updated Claude 3.5 Sonnet model
 * Anthropic-defined computer use tools
 * A streamlit app for interacting with the agent loop
@@ -43,14 +43,7 @@ docker run \
     -it ghcr.io/anthropics/anthropic-quickstarts:computer-use-demo-latest
 ```
 
-Once the container is running, open your browser to [http://localhost:8080](http://localhost:8080) to access the combined interface that includes both the agent chat and desktop view.
-
-The container stores settings like API key and custom system prompt in `~/.anthropic/`. Mount this directory to persist these settings between container runs.
-
-Alternative access points:
-- Streamlit interface only: [http://localhost:8501](http://localhost:8501)
-- Desktop view only: [http://localhost:6080/vnc.html](http://localhost:6080/vnc.html)
-- Direct VNC connection: `vnc://localhost:5900` (for VNC clients)
+Once the container is running, see the [Accessing the demo app](#accessing-the-demo-app) section below for instructions on how to connect to the interface.
 
 ### Bedrock
 
@@ -74,6 +67,8 @@ docker run \
     -it ghcr.io/anthropics/anthropic-quickstarts:computer-use-demo-latest
 ```
 
+Once the container is running, see the [Accessing the demo app](#accessing-the-demo-app) section below for instructions on how to connect to the interface.
+
 #### Option 2: Use an access key and secret
 
 ```bash
@@ -93,7 +88,10 @@ docker run \
     -it ghcr.io/anthropics/anthropic-quickstarts:computer-use-demo-latest
 ```
 
+Once the container is running, see the [Accessing the demo app](#accessing-the-demo-app) section below for instructions on how to connect to the interface.
+
 ### Vertex
+
 You'll need to pass in Google Cloud credentials with appropriate permissions to use Claude on Vertex.
 
 ```bash
@@ -112,11 +110,27 @@ docker run \
     -p 8080:8080 \
     -it computer-use-demo
 ```
+
+Once the container is running, see the [Accessing the demo app](#accessing-the-demo-app) section below for instructions on how to connect to the interface.
+
 This example shows how to use the Google Cloud Application Default Credentials to authenticate with Vertex.
 
 You can also set `GOOGLE_APPLICATION_CREDENTIALS` to use an arbitrary credential file, see the [Google Cloud Authentication documentation](https://cloud.google.com/docs/authentication/application-default-credentials#GAC) for more details.
 
+### Accessing the demo app
+
+Once the container is running, open your browser to [http://localhost:8080](http://localhost:8080) to access the combined interface that includes both the agent chat and desktop view.
+
+The container stores settings like the API key and custom system prompt in `~/.anthropic/`. Mount this directory to persist these settings between container runs.
+
+Alternative access points:
+
+- Streamlit interface only: [http://localhost:8501](http://localhost:8501)
+- Desktop view only: [http://localhost:6080/vnc.html](http://localhost:6080/vnc.html)
+- Direct VNC connection: `vnc://localhost:5900` (for VNC clients)
+
 ## Screen size
+
 Environment variables `WIDTH` and `HEIGHT` can be used to set the screen size. For example:
 
 ```bash
@@ -137,6 +151,7 @@ We do not recommend sending screenshots in resolutions above [XGA/WXGA](https://
 Relying on the image resizing behavior in the API will result in lower model accuracy and slower performance than implementing scaling in your tools directly. The `computer` tool implementation in this project demonstrates how to scale both images and coordinates from higher resolutions to the suggested resolutions.
 
 ## Development
+
 ```bash
 ./setup.sh  # configure venv, install development dependencies, and install pre-commit hooks
 docker build . -t computer-use-demo:local  # manually build the docker image (optional)
@@ -151,4 +166,5 @@ docker run \
     -p 8080:8080 \
     -it computer-use-demo:local  # can also use ghcr.io/anthropics/anthropic-quickstarts:computer-use-demo-latest
 ```
+
 The docker run command above mounts the repo inside the docker image, such that you can edit files from the host. Streamlit is already configured with auto reloading.
