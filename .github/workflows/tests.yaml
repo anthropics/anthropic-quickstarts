@@ -9,7 +9,7 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working_directory: computer-use-demo
+        working-directory: computer-use-demo
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/ruff-action@v1
@@ -17,7 +17,7 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working_directory: computer-use-demo
+        working-directory: computer-use-demo
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -34,7 +34,7 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working_directory: computer-use-demo
+        working-directory: computer-use-demo
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
