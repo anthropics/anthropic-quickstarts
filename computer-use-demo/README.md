@@ -43,15 +43,7 @@ docker run \
     -it ghcr.io/anthropics/anthropic-quickstarts:computer-use-demo-latest
 ```
 
-Once the container is running, open your browser to [http://localhost:8080](http://localhost:8080) to access the combined interface that includes both the agent chat and desktop view.
-
-The container stores settings like API key and custom system prompt in `~/.anthropic/`. Mount this directory to persist these settings between container runs.
-
-Alternative access points:
-
-- Streamlit interface only: [http://localhost:8501](http://localhost:8501)
-- Desktop view only: [http://localhost:6080/vnc.html](http://localhost:6080/vnc.html)
-- Direct VNC connection: `vnc://localhost:5900` (for VNC clients)
+Once the container is running, see the [Accessing the demo app](#accessing-the-demo-app) section below for instructions on how to connect to the interface.
 
 ### Bedrock
 
@@ -75,6 +67,8 @@ docker run \
     -it ghcr.io/anthropics/anthropic-quickstarts:computer-use-demo-latest
 ```
 
+Once the container is running, see the [Accessing the demo app](#accessing-the-demo-app) section below for instructions on how to connect to the interface.
+
 #### Option 2: Use an access key and secret
 
 ```bash
@@ -93,6 +87,8 @@ docker run \
     -p 8080:8080 \
     -it ghcr.io/anthropics/anthropic-quickstarts:computer-use-demo-latest
 ```
+
+Once the container is running, see the [Accessing the demo app](#accessing-the-demo-app) section below for instructions on how to connect to the interface.
 
 ### Vertex
 
@@ -115,9 +111,23 @@ docker run \
     -it computer-use-demo
 ```
 
+Once the container is running, see the [Accessing the demo app](#accessing-the-demo-app) section below for instructions on how to connect to the interface.
+
 This example shows how to use the Google Cloud Application Default Credentials to authenticate with Vertex.
 
 You can also set `GOOGLE_APPLICATION_CREDENTIALS` to use an arbitrary credential file, see the [Google Cloud Authentication documentation](https://cloud.google.com/docs/authentication/application-default-credentials#GAC) for more details.
+
+### Accessing the demo app
+
+Once the container is running, open your browser to [http://localhost:8080](http://localhost:8080) to access the combined interface that includes both the agent chat and desktop view.
+
+The container stores settings like the API key and custom system prompt in `~/.anthropic/`. Mount this directory to persist these settings between container runs.
+
+Alternative access points:
+
+- Streamlit interface only: [http://localhost:8501](http://localhost:8501)
+- Desktop view only: [http://localhost:6080/vnc.html](http://localhost:6080/vnc.html)
+- Direct VNC connection: `vnc://localhost:5900` (for VNC clients)
 
 ## Screen size
 
