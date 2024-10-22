@@ -58,6 +58,7 @@ export AWS_PROFILE=<your_aws_profile>
 docker run \
     -e API_PROVIDER=bedrock \
     -e AWS_PROFILE=$AWS_PROFILE \
+    -e AWS_REGION=us-west-2 \
     -v $HOME/.aws/credentials:/home/computeruse/.aws/credentials \
     -v $HOME/.anthropic:/home/computeruse/.anthropic \
     -p 5900:5900 \
@@ -80,6 +81,7 @@ docker run \
     -e AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID \
     -e AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY \
     -e AWS_SESSION_TOKEN=$AWS_SESSION_TOKEN \
+    -e AWS_REGION=us-west-2 \
     -v $HOME/.anthropic:/home/computeruse/.anthropic \
     -p 5900:5900 \
     -p 8501:8501 \
