@@ -31,6 +31,9 @@ Please use [this form](https://forms.gle/BT1hpBrqDPDUrCqo7) to provide feedback 
 
 ### Anthropic API
 
+> [!TIP]
+> You can find your API key in the [Anthropic Console](https://console.anthropic.com/).
+
 ```bash
 export ANTHROPIC_API_KEY=%your_api_key%
 docker run \
@@ -138,7 +141,6 @@ Environment variables `WIDTH` and `HEIGHT` can be used to set the screen size. F
 ```bash
 docker run \
     -e ANTHROPIC_API_KEY=$ANTHROPIC_API_KEY \
-    -v $(pwd)/computer_use_demo:/home/computeruse/computer_use_demo/ \
     -v $HOME/.anthropic:/home/computeruse/.anthropic \
     -p 5900:5900 \
     -p 8501:8501 \
