@@ -1,23 +1,48 @@
 from abc import ABCMeta, abstractmethod
 from dataclasses import dataclass, fields, replace
-from typing import Any
+from typing import Any, ClassVar, Literal, Optional, Required, TypedDict
 
-from anthropic.types.beta import BetaToolUnionParam
+APIToolType = Literal["computer_20241022", "text_editor_20241022", "bash_20241022"]
+APIToolName = Literal["computer", "str_replace_editor", "bash"]
+
+
+class AnthropicAPIToolParam(TypedDict):
+    """API shape for Anthropic-defined tools."""
+
+    name: Required[APIToolName]
+    type: Required[APIToolType]
+
+
+class ComputerToolOptions(TypedDict):
+    display_height_px: Required[int]
+    display_width_px: Required[int]
+    display_number: Optional[int]
 
 
 class BaseAnthropicTool(metaclass=ABCMeta):
     """Abstract base class for Anthropic-defined tools."""
+
+    name: ClassVar[APIToolName]
+    api_type: ClassVar[APIToolType]
+
+    @property
+    def options(self) -> ComputerToolOptions | None:
+        return None
 
     @abstractmethod
     def __call__(self, **kwargs) -> Any:
         """Executes the tool with the given arguments."""
         ...
 
-    @abstractmethod
     def to_params(
         self,
-    ) -> BetaToolUnionParam:
-        raise NotImplementedError
+    ) -> dict:  # -> AnthropicToolParam & Optional[ComputerToolOptions]
+        """Creates the shape necessary to this tool to the Anthropic API."""
+        return {
+            "name": self.name,
+            "type": self.api_type,
+            **(self.options or {}),
+        }
 
 
 @dataclass(kw_only=True, frozen=True)

@@ -8,9 +8,7 @@ from pathlib import Path
 from typing import Literal, TypedDict
 from uuid import uuid4
 
-from anthropic.types.beta import BetaToolComputerUse20241022Param
-
-from .base import BaseAnthropicTool, ToolError, ToolResult
+from .base import BaseAnthropicTool, ComputerToolOptions, ToolError, ToolResult
 from .run import run
 
 OUTPUT_DIR = "/tmp/outputs"
@@ -51,12 +49,6 @@ class ScalingSource(StrEnum):
     API = "api"
 
 
-class ComputerToolOptions(TypedDict):
-    display_height_px: int
-    display_width_px: int
-    display_number: int | None
-
-
 def chunks(s: str, chunk_size: int) -> list[str]:
     return [s[i : i + chunk_size] for i in range(0, len(s), chunk_size)]
 
@@ -67,8 +59,8 @@ class ComputerTool(BaseAnthropicTool):
     The tool parameters are defined by Anthropic and are not editable.
     """
 
-    name: Literal["computer"] = "computer"
-    api_type: Literal["computer_20241022"] = "computer_20241022"
+    name = "computer"
+    api_type = "computer_20241022"
     width: int
     height: int
     display_num: int | None
@@ -86,9 +78,6 @@ class ComputerTool(BaseAnthropicTool):
             "display_height_px": height,
             "display_number": self.display_num,
         }
-
-    def to_params(self) -> BetaToolComputerUse20241022Param:
-        return {"name": self.name, "type": self.api_type, **self.options}
 
     def __init__(self):
         super().__init__()
