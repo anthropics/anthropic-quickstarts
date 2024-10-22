@@ -1,6 +1,6 @@
 # Anthropic Quickstarts
 
-Anthropic Quickstarts is a collection of projects designed to help developers quickly get started with building deployable applications using the Anthropic API. Each quickstart provides a foundation that you can easily build upon and customize for your specific needs.
+Anthropic Quickstarts is a collection of projects designed to help developers quickly get started with building  applications using the Anthropic API. Each quickstart provides a foundation that you can easily build upon and customize for your specific needs.
 
 ## Getting Started
 
@@ -8,17 +8,23 @@ To use these quickstarts, you'll need an Anthropic API key. If you don't have on
 
 ## Available Quickstarts
 
-### 1. Customer Support Agent
+### Customer Support Agent
 
-Our first quickstart project is a customer support agent powered by Claude. This project demonstrates how to leverage Claude's natural language understanding and generation capabilities to create an AI-assisted customer support system with access to a knowledge base.
+A customer support agent powered by Claude. This project demonstrates how to leverage Claude's natural language understanding and generation capabilities to create an AI-assisted customer support system with access to a knowledge base.
 
 [Go to Customer Support Agent Quickstart](./customer-support-agent)
 
-### 2. Financial Data Analyst
+### Financial Data Analyst
 
-Our second quickstart is a financial data analyst powered by Claude. This project demonstrates how to leverage Claude's capabilities with interactive data visualization to analyze financial data via chat.
+A financial data analyst powered by Claude. This project demonstrates how to leverage Claude's capabilities with interactive data visualization to analyze financial data via chat.
 
 [Go to Financial Data Analyst Quickstart](./financial-data-analyst)
+
+### Computer Use Demo
+
+An environment and tools that Claude can use to control a desktop computer. This project demonstrates how to leverage the computer use capabilities of the the new Claude 3.5 Sonnet model.
+
+[Go to Computer Use Demo Quickstart](./computer-use-demo)
 
 ## General Usage
 
