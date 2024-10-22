@@ -43,6 +43,8 @@ docker run \
     -it ghcr.io/anthropics/anthropic-quickstarts:computer-use-demo-latest
 ```
 
+Once the container is running, see the [Accessing the demo app](#accessing-the-demo-app) section below for instructions on how to connect to the interface.
+
 ### Bedrock
 
 You'll need to pass in AWS credentials with appropriate permissions to use Claude on Bedrock.
@@ -52,7 +54,7 @@ You have a few options for authenticating with Bedrock. See the [boto3 documenta
 #### Option 1: (suggested) Use the host's AWS credentials file and AWS profile
 
 ```bash
-export AWS_PROFILE=<your_aws_profile>
+export AWS_PROFILE=
 docker run \
     -e API_PROVIDER=bedrock \
     -e AWS_PROFILE=$AWS_PROFILE \
@@ -64,6 +66,8 @@ docker run \
     -p 8080:8080 \
     -it ghcr.io/anthropics/anthropic-quickstarts:computer-use-demo-latest
 ```
+
+Once the container is running, see the [Accessing the demo app](#accessing-the-demo-app) section below for instructions on how to connect to the interface.
 
 #### Option 2: Use an access key and secret
 
@@ -83,6 +87,8 @@ docker run \
     -p 8080:8080 \
     -it ghcr.io/anthropics/anthropic-quickstarts:computer-use-demo-latest
 ```
+
+Once the container is running, see the [Accessing the demo app](#accessing-the-demo-app) section below for instructions on how to connect to the interface.
 
 ### Vertex
 
@@ -104,6 +110,8 @@ docker run \
     -p 8080:8080 \
     -it computer-use-demo
 ```
+
+Once the container is running, see the [Accessing the demo app](#accessing-the-demo-app) section below for instructions on how to connect to the interface.
 
 This example shows how to use the Google Cloud Application Default Credentials to authenticate with Vertex.
 
