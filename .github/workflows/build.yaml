@@ -13,90 +13,33 @@ on:
       - .github/**
       - computer-use-demo/**
 jobs:
-  build:
-    runs-on: ubuntu-latest
+  build-amd64:
+    uses: ./.github/workflows/reusable_build_step.yaml
+    with:
+      platform: amd64
+      builder: ubuntu-latest-16core
+      registry: ghcr.io/anthropics/anthropic-quickstarts
+      tag_prefix: computer-use-demo-
+      context: computer-use-demo
     permissions:
       contents: read
       packages: write
-    strategy:
-      fail-fast: true
-      matrix:
-        platform:
-          - amd64
-          - arm64
-    steps:
-      - uses: actions/checkout@v4
-      - name: Login to ghcr.io
-        uses: docker/login-action@v3
-        with:
-          registry: ghcr.io
-          username: ${{github.actor}}
-          password: ${{secrets.GITHUB_TOKEN}}
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v3
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-      - name: Set image tag
-        run: |
-          short_sha=$(git rev-parse --short ${{ github.sha }})
-          echo "TAG=${REGISTRY}:computer-use-demo-${short_sha}" >> "$GITHUB_ENV"
-      - name: Build Docker image
-        uses: docker/build-push-action@v5
-        with:
-          platforms: linux/${{ matrix.platform }}
-          context: computer-use-demo
-          push: false
-          tags: ${{ env.TAG }}
-          cache-from: type=gha,scope=computer-use-${{ matrix.platform }}
-          cache-to: type=gha,mode=max,scope=computer-use-${{ matrix.platform }}
-          load: true
-      - name: Run container
-        run: docker run -d -p 8051:8051 ${{ env.TAG }}
-      - name: Check streamlit
-        run: |
-          timeout=60
-          start_time=$(date +%s)
-          docker_id=$(docker ps --filter "ancestor=${{ env.TAG }}" --format "{{.ID}}")
-          echo "docker_id=$docker_id" >> "$GITHUB_ENV"
-          while true; do
-            current_time=$(date +%s)
-            elapsed=$((current_time - start_time))
-            if [ $elapsed -ge $timeout ]; then
-              echo "Timeout reached. Container did not respond within $timeout seconds."
-              exit 1
-            fi
-            response=$(docker exec $docker_id curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:8501 || echo "000")
-            if [ "$response" = "200" ]; then
-              echo "Container responded with 200 OK"
-              exit 0
-            fi
-          done
-      - name: Check VNC
-        run: docker exec $docker_id nc localhost 5900 -z
-      - name: Check noVNC
-        run: docker exec $docker_id curl -s -o /dev/null -w "%{http_code}" http://localhost:6080 | grep -q 200 || exit 1
-      - name: Check landing page
-        run: docker exec $docker_id curl -s -o /dev/null -w "%{http_code}" http://localhost:8080 | grep -q 200 || exit 1
-      - name: Determine push tags
-        run: |
-          if [ "${{ github.event_name }}" == "pull_request" ]; then
-            echo "PUSH_TAGS=${TAG}-${{ matrix.platform }}" >> "$GITHUB_ENV"
-          else
-            echo "PUSH_TAGS=${TAG}-${{ matrix.platform }},${REGISTRY}:computer-use-demo-latest-${{ matrix.platform }}" >> "$GITHUB_ENV"
-          fi
-      - name: Push Docker image
-        uses: docker/build-push-action@v5
-        with:
-          platforms: linux/${{ matrix.platform }}
-          context: computer-use-demo
-          push: true
-          tags: ${{ env.PUSH_TAGS }}
-          cache-from: type=gha,scope=computer-use-${{ matrix.platform }}
-          cache-to: type=gha,mode=max,scope=computer-use-${{ matrix.platform }}
+  build-arm64:
+    uses: ./.github/workflows/reusable_build_step.yaml
+    with:
+      platform: arm64
+      builder: ubuntu-22.04-arm64-16core
+      registry: ghcr.io/anthropics/anthropic-quickstarts
+      tag_prefix: computer-use-demo-
+      context: computer-use-demo
+    permissions:
+      contents: read
+      packages: write
   merge:
     runs-on: ubuntu-latest
     needs:
-      - build
+      - build-arm64
+      - build-amd64
     permissions:
       contents: read
       packages: write
@@ -108,8 +51,6 @@ jobs:
           registry: ghcr.io
           username: ${{github.actor}}
           password: ${{secrets.GITHUB_TOKEN}}
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v3
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
       - name: Set image tag
