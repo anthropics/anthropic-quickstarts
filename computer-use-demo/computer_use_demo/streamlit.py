@@ -6,18 +6,20 @@ import asyncio
 import base64
 import os
 import subprocess
-from datetime import datetime
+import traceback
+from datetime import datetime, timedelta
 from enum import StrEnum
 from functools import partial
 from pathlib import PosixPath
 from typing import cast
 
+import httpx
 import streamlit as st
-from anthropic import APIResponse
+from anthropic import RateLimitError
 from anthropic.types import (
     TextBlock,
 )
-from anthropic.types.beta import BetaMessage, BetaTextBlock, BetaToolUseBlock
+from anthropic.types.beta import BetaTextBlock, BetaToolUseBlock
 from anthropic.types.tool_use_block import ToolUseBlock
 from streamlit.delta_generator import DeltaGenerator
 
@@ -38,7 +40,7 @@ STREAMLIT_STYLE = """
         display: none;
     }
      /* Hide the streamlit deploy button */
-    .stDeployButton {
+    .stAppDeployButton {
         visibility: hidden;
     }
 </style>
@@ -186,8 +188,8 @@ async def main():
                         )
 
         # render past http exchanges
-        for identity, response in st.session_state.responses.items():
-            _render_api_response(response, identity, http_logs)
+        for identity, (request, response) in st.session_state.responses.items():
+            _render_api_response(request, response, identity, http_logs)
 
         # render past chats
         if new_message:
@@ -278,16 +280,20 @@ def save_to_storage(filename: str, data: str) -> None:
 
 
 def _api_response_callback(
-    response: APIResponse[BetaMessage],
+    request: httpx.Request,
+    response: httpx.Response | object | None,
+    error: Exception | None,
     tab: DeltaGenerator,
-    response_state: dict[str, APIResponse[BetaMessage]],
+    response_state: dict[str, tuple[httpx.Request, httpx.Response | object | None]],
 ):
     """
     Handle an API response by storing it to state and rendering it.
     """
     response_id = datetime.now().isoformat()
-    response_state[response_id] = response
-    _render_api_response(response, response_id, tab)
+    response_state[response_id] = (request, response)
+    if error:
+        _render_error(error)
+    _render_api_response(request, response, response_id, tab)
 
 
 def _tool_output_callback(
@@ -299,20 +305,42 @@ def _tool_output_callback(
 
 
 def _render_api_response(
-    response: APIResponse[BetaMessage], response_id: str, tab: DeltaGenerator
+    request: httpx.Request,
+    response: httpx.Response | object | None,
+    response_id: str,
+    tab: DeltaGenerator,
 ):
     """Render an API response to a streamlit tab"""
     with tab:
         with st.expander(f"Request/Response ({response_id})"):
             newline = "\n\n"
             st.markdown(
-                f"`{response.http_request.method} {response.http_request.url}`{newline}{newline.join(f'`{k}: {v}`' for k, v in response.http_request.headers.items())}"
+                f"`{request.method} {request.url}`{newline}{newline.join(f'`{k}: {v}`' for k, v in request.headers.items())}"
             )
-            st.json(response.http_request.read().decode())
-            st.markdown(
-                f"`{response.http_response.status_code}`{newline}{newline.join(f'`{k}: {v}`' for k, v in response.headers.items())}"
-            )
-            st.json(response.http_response.text)
+            st.json(request.read().decode())
+            st.markdown("---")
+            if isinstance(response, httpx.Response):
+                st.markdown(
+                    f"`{response.status_code}`{newline}{newline.join(f'`{k}: {v}`' for k, v in response.headers.items())}"
+                )
+                st.json(response.text)
+            else:
+                st.write(response)
+
+
+def _render_error(error: Exception):
+    if isinstance(error, RateLimitError):
+        body = "You have been rate limited."
+        if retry_after := error.response.headers.get("retry-after"):
+            body += f" **Retry after {str(timedelta(seconds=int(retry_after)))} (HH:MM:SS).** See our API [documentation](https://docs.anthropic.com/en/api/rate-limits) for more details."
+        body += f"\n\n{error.message}"
+    else:
+        body = str(error)
+        body += "\n\n**Traceback:**"
+        lines = "\n".join(traceback.format_exception(error))
+        body += f"\n\n```{lines}```"
+    save_to_storage(f"error_{datetime.now().timestamp()}.md", body)
+    st.error(f"**{error.__class__.__name__}**\n\n{body}", icon=":material/error:")
 
 
 def _render_message(
