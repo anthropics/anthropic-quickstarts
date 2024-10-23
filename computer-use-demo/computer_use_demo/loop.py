@@ -1,5 +1,5 @@
 """
-Agentic sampling loop that calls the Anthropic API and local implenmentation of anthropic-defined computer use tools.
+Agentic sampling loop that calls the Anthropic API and local implementation of anthropic-defined computer use tools.
 """
 
 import platform
@@ -23,7 +23,8 @@ from anthropic.types.beta import (
 
 from .tools import BashTool, ComputerTool, EditTool, ToolCollection, ToolResult
 
-BETA_FLAG = "computer-use-2024-10-22"
+COMPUTER_USE_BETA_FLAG = "computer-use-2024-10-22"
+PROMPT_CACHING_BETA_FLAG = "prompt-caching-2024-07-31"
 
 
 class APIProvider(StrEnum):
@@ -89,7 +90,7 @@ async def sampling_loop(
 
     while True:
         enable_prompt_caching = False
-        betas = ["computer-use-2024-10-22"]
+        betas = [COMPUTER_USE_BETA_FLAG]
         image_truncation_threshold = 10
         if provider == APIProvider.ANTHROPIC:
             client = Anthropic(api_key=api_key)
@@ -100,7 +101,7 @@ async def sampling_loop(
             client = AnthropicBedrock()
 
         if enable_prompt_caching:
-            betas.append("prompt-caching-2024-07-31")
+            betas.append(PROMPT_CACHING_BETA_FLAG)
             _inject_prompt_caching(messages)
             # Is it ever worth it to bust the cache with prompt caching?
             image_truncation_threshold = 50

@@ -30,8 +30,8 @@ A sophisticated Next.js application that combines Claude's capabilities with int
 
 1. Clone the repository:
 ```bash
-git clone https://github.com/yourusername/financial-ai-assistant.git
-cd financial-ai-assistant
+git clone https://github.com/anthropics/anthropic-quickstarts.git
+cd anthropic-quickstarts/financial-data-analyst
 ```
 
 2. Install dependencies:
