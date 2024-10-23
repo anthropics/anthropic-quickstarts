@@ -97,6 +97,10 @@ async def sampling_loop(
         }[provider]
 
         try:
+            # Call the API
+            # we use raw_response to provide debug information to streamlit. Your
+            # implementation may be able call the SDK directly with:
+            # `response = client.messages.create(...)` instead.
             raw_response = client.beta.messages.with_raw_response.create(
                 max_tokens=max_tokens,
                 messages=messages,
@@ -179,6 +183,7 @@ def _maybe_filter_to_n_most_recent_images(
     )
 
     images_to_remove = total_images - images_to_keep
+    # for better cache behavior, we want to remove in chunks
     images_to_remove -= images_to_remove % min_removal_threshold
 
     for tool_result in tool_result_blocks:
@@ -196,6 +201,7 @@ def _maybe_filter_to_n_most_recent_images(
 def _make_api_tool_result(
     result: ToolResult, tool_use_id: str
 ) -> BetaToolResultBlockParam:
+    """Convert an agent ToolResult to an API ToolResultBlockParam."""
     tool_result_content: list[BetaTextBlockParam | BetaImageBlockParam] | str = []
     is_error = False
     if result.error:
