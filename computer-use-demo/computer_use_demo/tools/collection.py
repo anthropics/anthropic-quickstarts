@@ -36,6 +36,10 @@ class ToolCollection:
         tool = self.tool_map.get(name)
         if not tool:
             return ToolFailure(error=f"Tool {name} is invalid")
+        try:
+            return await tool(**tool_input)
+        except ToolError as e:
+            return ToolFailure(error=e.message)
 
         while retries < max_retries:
             try:
