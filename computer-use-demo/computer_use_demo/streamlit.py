@@ -12,10 +12,13 @@ from functools import partial
 from pathlib import PosixPath
 from typing import cast
 
-from anthropic.types.beta.beta_tool_use_block_param import BetaToolUseBlockParam
 import streamlit as st
 from anthropic import APIResponse
-from anthropic.types.beta import BetaContentBlockParam, BetaMessage, BetaTextBlockParam, BetaToolResultBlockParam, BetaToolUseBlock
+from anthropic.types.beta import (
+    BetaContentBlockParam,
+    BetaMessage,
+    BetaTextBlockParam,
+)
 from streamlit.delta_generator import DeltaGenerator
 
 from computer_use_demo.loop import (

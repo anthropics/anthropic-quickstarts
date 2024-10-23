@@ -1,7 +1,7 @@
 from unittest import mock
 
-from anthropic.types import TextBlockParam
 import pytest
+from anthropic.types import TextBlockParam
 from streamlit.testing.v1 import AppTest
 
 from computer_use_demo.streamlit import Sender
@@ -19,6 +19,9 @@ def test_streamlit(streamlit_app: AppTest):
         streamlit_app.chat_input[0].set_value("Hello").run()
         assert patch.called
         assert patch.call_args.kwargs["messages"] == [
-            {"role": Sender.USER, "content": [TextBlockParam(text="Hello", type="text")]}
+            {
+                "role": Sender.USER,
+                "content": [TextBlockParam(text="Hello", type="text")],
+            }
         ]
         assert not streamlit_app.exception
