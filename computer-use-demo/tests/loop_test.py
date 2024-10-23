@@ -1,7 +1,7 @@
 from unittest import mock
 
 from anthropic.types import TextBlock, ToolUseBlock
-from anthropic.types.beta import BetaMessage, BetaMessageParam
+from anthropic.types.beta import BetaMessage, BetaMessageParam, BetaTextBlockParam
 
 from computer_use_demo.loop import APIProvider, sampling_loop
 
@@ -58,7 +58,9 @@ async def test_loop():
         tool_collection.run.assert_called_once_with(
             name="computer", tool_input={"action": "test"}
         )
-        output_callback.assert_called_with(TextBlock(text="Done!", type="text"))
+        output_callback.assert_called_with(
+            BetaTextBlockParam(text="Done!", type="text")
+        )
         assert output_callback.call_count == 3
         assert tool_output_callback.call_count == 1
         assert api_response_callback.call_count == 2
