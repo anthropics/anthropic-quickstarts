@@ -8,11 +8,18 @@ from datetime import datetime
 from enum import StrEnum
 from typing import Any, cast
 
-from anthropic import Anthropic, AnthropicBedrock, AnthropicVertex, APIResponse
+from anthropic import (
+    Anthropic,
+    AnthropicBedrock,
+    AnthropicVertex,
+    APIResponse,
+    BaseModel,
+)
 from anthropic.types import (
     ToolResultBlockParam,
 )
 from anthropic.types.beta import (
+    BetaCacheControlEphemeralParam,
     BetaContentBlock,
     BetaContentBlockParam,
     BetaImageBlockParam,
@@ -23,8 +30,6 @@ from anthropic.types.beta import (
 )
 
 from .tools import BashTool, ComputerTool, EditTool, ToolCollection, ToolResult
-
-BETA_FLAG = "computer-use-2024-10-22"
 
 
 class APIProvider(StrEnum):
@@ -74,6 +79,7 @@ async def sampling_loop(
     api_key: str,
     only_n_most_recent_images: int | None = None,
     max_tokens: int = 4096,
+    prompt_caching: bool = True,
 ):
     """
     Agentic sampling loop for the assistant/tool interaction of computer use.
@@ -98,6 +104,11 @@ async def sampling_loop(
         elif provider == APIProvider.BEDROCK:
             client = AnthropicBedrock()
 
+        betas = ["computer-use-2024-10-22"]
+        if prompt_caching:
+            betas.append("prompt-caching-2024-07-31")
+            _add_prompt_caching_headers(messages)
+
         # Call the API
         # we use raw_response to provide debug information to streamlit. Your
         # implementation may be able call the SDK directly with:
@@ -108,7 +119,7 @@ async def sampling_loop(
             model=model,
             system=system,
             tools=tool_collection.to_params(),
-            betas=["computer-use-2024-10-22"],
+            betas=betas,
         )
 
         api_response_callback(cast(APIResponse[BetaMessage], raw_response))
@@ -230,3 +241,36 @@ def _maybe_prepend_system_tool_result(result: ToolResult, result_text: str):
     if result.system:
         result_text = f"<system>{result.system}</system>\n{result_text}"
     return result_text
+
+
+MAX_PROMPT_CACHING_BREAKPOINTS = 4
+
+
+def _add_prompt_caching_headers(
+    messages: list[BetaMessageParam],
+):
+    prompt_caching_breakpoints = 0
+    for message in messages:
+        if isinstance(message["content"], str):
+            continue
+
+        params: list[BetaContentBlockParam] = []
+        for content_block in message["content"]:
+            if isinstance(content_block, BaseModel):
+                content_block_param = cast(
+                    BetaContentBlockParam, content_block.to_dict()
+                )
+            else:
+                content_block_param = content_block
+            params.append(content_block_param)
+
+            if (
+                isinstance(content_block_param, dict)
+                and content_block_param.get("type") == "image"
+                and prompt_caching_breakpoints < MAX_PROMPT_CACHING_BREAKPOINTS
+            ):
+                content_block_param["cache_control"] = BetaCacheControlEphemeralParam(
+                    type="ephemeral"
+                )
+                prompt_caching_breakpoints += 1
+        message["content"] = params

@@ -194,7 +194,7 @@ async def main():
             st.session_state.messages.append(
                 {
                     "role": Sender.USER,
-                    "content": [TextBlock(type="text", text=new_message)],
+                    "content": [BetaTextBlock(type="text", text=new_message)],
                 }
             )
             _render_message(Sender.USER, new_message)

@@ -1,7 +1,11 @@
 from unittest import mock
 
-from anthropic.types import TextBlock, ToolUseBlock
-from anthropic.types.beta import BetaMessage, BetaMessageParam
+from anthropic.types.beta import (
+    BetaMessage,
+    BetaMessageParam,
+    BetaTextBlock,
+    BetaToolUseBlock,
+)
 
 from computer_use_demo.loop import APIProvider, sampling_loop
 
@@ -13,13 +17,13 @@ async def test_loop():
         mock.Mock(
             spec=BetaMessage,
             content=[
-                TextBlock(type="text", text="Hello"),
-                ToolUseBlock(
+                BetaTextBlock(type="text", text="Hello"),
+                BetaToolUseBlock(
                     type="tool_use", id="1", name="computer", input={"action": "test"}
                 ),
             ],
         ),
-        mock.Mock(spec=BetaMessage, content=[TextBlock(type="text", text="Done!")]),
+        mock.Mock(spec=BetaMessage, content=[BetaTextBlock(type="text", text="Done!")]),
     ]
 
     tool_collection = mock.AsyncMock()
@@ -49,7 +53,8 @@ async def test_loop():
         )
 
         assert len(result) == 4
-        assert result[0] == {"role": "user", "content": "Test message"}
+        assert result[0]["role"] == "user"
+        assert result[0]["content"] == "Test message"
         assert result[1]["role"] == "assistant"
         assert result[2]["role"] == "user"
         assert result[3]["role"] == "assistant"
@@ -58,7 +63,7 @@ async def test_loop():
         tool_collection.run.assert_called_once_with(
             name="computer", tool_input={"action": "test"}
         )
-        output_callback.assert_called_with(TextBlock(text="Done!", type="text"))
+        output_callback.assert_called_with(BetaTextBlock(text="Done!", type="text"))
         assert output_callback.call_count == 3
         assert tool_output_callback.call_count == 1
         assert api_response_callback.call_count == 2
