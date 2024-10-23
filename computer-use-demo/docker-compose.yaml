@@ -16,4 +16,7 @@ services:
       - "8080:8080"
     stdin_open: true  # For interactive mode (-i)
     tty: true         # For pseudo-TTY (-t)
-
+    environment:
+      # Load environment variables from the .env file
+      - DEBUG_MODE=${DEBUG_MODE}
+      - STREAMLIT_LOG_LEVEL=${STREAMLIT_LOG_LEVEL:-info}  # Default to 'info' if not set
