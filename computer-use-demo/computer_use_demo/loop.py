@@ -82,8 +82,9 @@ async def sampling_loop(
         BashTool(),
         EditTool(),
     )
-    system = (
-        f"{SYSTEM_PROMPT}{' ' + system_prompt_suffix if system_prompt_suffix else ''}"
+    system = BetaTextBlockParam(
+        type="text",
+        text=f"{SYSTEM_PROMPT}{' ' + system_prompt_suffix if system_prompt_suffix else ''}",
     )
 
     while True:
@@ -103,6 +104,7 @@ async def sampling_loop(
             _inject_prompt_caching(messages)
             # Is it ever worth it to bust the cache with prompt caching?
             image_truncation_threshold = 50
+            system["cache_control"] = {"type": "ephemeral"}
 
         if only_n_most_recent_images:
             _maybe_filter_to_n_most_recent_images(
@@ -119,10 +121,8 @@ async def sampling_loop(
             max_tokens=max_tokens,
             messages=messages,
             model=model,
-            system=system,
-            tools=tool_collection.to_params(
-                enable_prompt_caching=enable_prompt_caching
-            ),
+            system=[system],
+            tools=tool_collection.to_params(),
             betas=betas,
         )
 
@@ -223,10 +223,8 @@ def _inject_prompt_caching(
     messages: list[BetaMessageParam],
 ):
     """
-    With the assumption that images are screenshots that are of diminishing value as
-    the conversation progresses, remove all but the final `images_to_keep` tool_result
-    images in place, with a chunk of min_removal_threshold to reduce the amount we
-    break the implicit prompt cache.
+    Set cache breakpoints for the 3 most recent turns
+    one cache breakpoint is left for tools/system prompt, to be shared across sessions
     """
 
     breakpoints_remaining = 3
