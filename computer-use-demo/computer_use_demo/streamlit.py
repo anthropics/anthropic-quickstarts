@@ -6,6 +6,7 @@ import asyncio
 import base64
 import os
 import subprocess
+import traceback
 from datetime import datetime, timedelta
 from enum import StrEnum
 from functools import partial
@@ -39,7 +40,7 @@ STREAMLIT_STYLE = """
         display: none;
     }
      /* Hide the streamlit deploy button */
-    .stDeployButton {
+    .stAppDeployButton {
         visibility: hidden;
     }
 </style>
@@ -331,10 +332,14 @@ def _render_error(error: Exception):
     if isinstance(error, RateLimitError):
         body = "You have been rate limited."
         if retry_after := error.response.headers.get("retry-after"):
-            body += f" **Retry after {str(timedelta(seconds=int(retry_after)))} (HH:MM:SS).**"
+            body += f" **Retry after {str(timedelta(seconds=int(retry_after)))} (HH:MM:SS).** See our API [documentation](https://docs.anthropic.com/en/api/rate-limits) for more details."
         body += f"\n\n{error.message}"
     else:
         body = str(error)
+        body += "\n\n**Traceback:**"
+        lines = "\n".join(traceback.format_exception(error))
+        body += f"\n\n```{lines}```"
+    save_to_storage(f"error_{datetime.now().timestamp()}.md", body)
     st.error(f"**{error.__class__.__name__}**\n\n{body}", icon=":material/error:")
 
 
