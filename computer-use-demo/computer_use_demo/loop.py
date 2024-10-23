@@ -108,7 +108,7 @@ async def sampling_loop(
             model=model,
             system=system,
             tools=tool_collection.to_params(),
-            betas=["computer-use-2024-10-22"],
+            betas=[BETA_FLAG],
         )
 
         api_response_callback(cast(APIResponse[BetaMessage], raw_response))
