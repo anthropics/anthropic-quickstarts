@@ -8,7 +8,15 @@ from datetime import datetime
 from enum import StrEnum
 from typing import Any, cast
 
-from anthropic import Anthropic, AnthropicBedrock, AnthropicVertex, APIResponse
+import httpx
+from anthropic import (
+    Anthropic,
+    AnthropicBedrock,
+    AnthropicVertex,
+    APIError,
+    APIResponseValidationError,
+    APIStatusError,
+)
 from anthropic.types import (
     ToolResultBlockParam,
 )
@@ -16,7 +24,6 @@ from anthropic.types.beta import (
     BetaContentBlock,
     BetaContentBlockParam,
     BetaImageBlockParam,
-    BetaMessage,
     BetaMessageParam,
     BetaTextBlockParam,
     BetaToolResultBlockParam,
@@ -70,7 +77,9 @@ async def sampling_loop(
     messages: list[BetaMessageParam],
     output_callback: Callable[[BetaContentBlock], None],
     tool_output_callback: Callable[[ToolResult, str], None],
-    api_response_callback: Callable[[APIResponse[BetaMessage]], None],
+    api_response_callback: Callable[
+        [httpx.Request, httpx.Response | object | None, Exception | None], None
+    ],
     api_key: str,
     only_n_most_recent_images: int | None = None,
     max_tokens: int = 4096,
@@ -102,16 +111,25 @@ async def sampling_loop(
         # we use raw_response to provide debug information to streamlit. Your
         # implementation may be able call the SDK directly with:
         # `response = client.messages.create(...)` instead.
-        raw_response = client.beta.messages.with_raw_response.create(
-            max_tokens=max_tokens,
-            messages=messages,
-            model=model,
-            system=system,
-            tools=tool_collection.to_params(),
-            betas=[BETA_FLAG],
-        )
+        try:
+            raw_response = client.beta.messages.with_raw_response.create(
+                max_tokens=max_tokens,
+                messages=messages,
+                model=model,
+                system=system,
+                tools=tool_collection.to_params(),
+                betas=[BETA_FLAG],
+            )
+        except (APIStatusError, APIResponseValidationError) as e:
+            api_response_callback(e.request, e.response, e)
+            return messages
+        except APIError as e:
+            api_response_callback(e.request, e.body, e)
+            return messages
 
-        api_response_callback(cast(APIResponse[BetaMessage], raw_response))
+        api_response_callback(
+            raw_response.http_response.request, raw_response.http_response, None
+        )
 
         response = raw_response.parse()
 
