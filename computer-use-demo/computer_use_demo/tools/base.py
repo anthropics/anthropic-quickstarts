@@ -65,5 +65,7 @@ class ToolFailure(ToolResult):
 class ToolError(Exception):
     """Raised when a tool encounters an error."""
 
-    def __init__(self, message):
+    def __init__(self, message: str, status_code: int | None = None):
+        super().__init__(message)
         self.message = message
+        self.status_code = status_code

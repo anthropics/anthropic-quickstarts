@@ -1,0 +1,19 @@
+services:
+  computer-use-demo:
+    build:
+      context: .  # Directory containing the Dockerfile
+      dockerfile: Dockerfile  # Optional, specify if your Dockerfile has a custom name
+    container_name: computer-use-demo-container
+      #entrypoint: ["bash"]  # Use bash instead of the entrypoint
+    env_file:
+      - .env
+    volumes:
+      - .anthropic:/home/computeruse/.anthropic  # Adjust path if needed
+    ports:
+      - "5900:5900"
+      - "8501:8501"
+      - "6080:6080"
+      - "8080:8080"
+    stdin_open: true  # For interactive mode (-i)
+    tty: true         # For pseudo-TTY (-t)
+
