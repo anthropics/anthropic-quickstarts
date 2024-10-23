@@ -38,6 +38,11 @@ PROVIDER_TO_DEFAULT_MODEL_NAME: dict[APIProvider, str] = {
     APIProvider.VERTEX: "claude-3-5-sonnet-v2@20241022",
 }
 
+# This system prompt is optimized for the Docker environment in this repository and
+# specific tool combinations enabled.
+# We encourage modifying this system prompt to ensure the model has context for the
+# environment it is running in, and to provide any additional information that may be
+# helpful for the task at hand.
 SYSTEM_PROMPT = f"""<SYSTEM_CAPABILITY>
 * You are utilising an Ubuntu virtual machine using {platform.machine()} architecture with internet access.
 * You can feel free to install Ubuntu applications with your bash tool. Use curl instead of wget.
@@ -145,6 +150,15 @@ def _maybe_filter_to_n_most_recent_images(
     images_to_keep: int,
     min_removal_threshold: int = 10,
 ):
+    """
+    With the assumption that images are screenshots that are of diminishing value as
+    the conversation progresses, remove all but the final `images_to_keep` tool_result
+    images in place, with a chunk of min_removal_threshold to reduce the amount we
+    break the implicit prompt cache.
+    """
+    if images_to_keep is None:
+        return messages
+
     tool_result_blocks = cast(
         list[ToolResultBlockParam],
         [
