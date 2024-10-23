@@ -9,9 +9,6 @@ from enum import StrEnum
 from typing import Any, cast
 
 from anthropic import Anthropic, AnthropicBedrock, AnthropicVertex, APIResponse
-from anthropic.types import (
-    ToolResultBlockParam,
-)
 from anthropic.types.beta import (
     BetaContentBlock,
     BetaContentBlockParam,
@@ -20,6 +17,10 @@ from anthropic.types.beta import (
     BetaMessageParam,
     BetaTextBlockParam,
     BetaToolResultBlockParam,
+    BetaToolUseBlockParam,
+    BetaTextBlock,
+    BetaToolUseBlock,
+    BetaCacheControlEphemeralParam,
 )
 
 from .tools import BashTool, ComputerTool, EditTool, ToolCollection, ToolResult
@@ -68,7 +69,7 @@ async def sampling_loop(
     provider: APIProvider,
     system_prompt_suffix: str,
     messages: list[BetaMessageParam],
-    output_callback: Callable[[BetaContentBlock], None],
+    output_callback: Callable[[BetaContentBlockParam], None],
     tool_output_callback: Callable[[ToolResult, str], None],
     api_response_callback: Callable[[APIResponse[BetaMessage]], None],
     api_key: str,
@@ -88,16 +89,27 @@ async def sampling_loop(
     )
 
     while True:
-        if only_n_most_recent_images:
-            _maybe_filter_to_n_most_recent_images(messages, only_n_most_recent_images)
 
+        enable_prompt_caching = False
+        betas=["computer-use-2024-10-22"]
+        image_truncation_threshold = 10
         if provider == APIProvider.ANTHROPIC:
             client = Anthropic(api_key=api_key)
+            enable_prompt_caching = True
         elif provider == APIProvider.VERTEX:
             client = AnthropicVertex()
         elif provider == APIProvider.BEDROCK:
             client = AnthropicBedrock()
+            
+        if enable_prompt_caching:
+            betas.append("prompt-caching-2024-07-31")
+            _inject_prompt_caching(messages)
+            # Is it ever worth it to bust the cache with prompt caching?
+            image_truncation_threshold = 50
 
+        if only_n_most_recent_images:
+            _maybe_filter_to_n_most_recent_images(messages, only_n_most_recent_images, min_removal_threshold=image_truncation_threshold)
+        
         # Call the API
         # we use raw_response to provide debug information to streamlit. Your
         # implementation may be able call the SDK directly with:
@@ -107,33 +119,35 @@ async def sampling_loop(
             messages=messages,
             model=model,
             system=system,
-            tools=tool_collection.to_params(),
-            betas=["computer-use-2024-10-22"],
+            tools=tool_collection.to_params(enable_prompt_caching=enable_prompt_caching),
+            betas=betas
         )
+        
+        raw_response = cast(APIResponse[BetaMessage], raw_response)
 
-        api_response_callback(cast(APIResponse[BetaMessage], raw_response))
-
+        api_response_callback(raw_response)
         response = raw_response.parse()
 
+        response_params = _response_to_params(response)
         messages.append(
             {
                 "role": "assistant",
-                "content": cast(list[BetaContentBlockParam], response.content),
+                "content": response_params,
             }
         )
 
         tool_result_content: list[BetaToolResultBlockParam] = []
-        for content_block in cast(list[BetaContentBlock], response.content):
+        for content_block in response_params:
             output_callback(content_block)
-            if content_block.type == "tool_use":
+            if content_block["type"] == "tool_use":
                 result = await tool_collection.run(
-                    name=content_block.name,
-                    tool_input=cast(dict[str, Any], content_block.input),
+                    name=content_block["name"],
+                    tool_input=cast(dict[str, Any], content_block["input"]),
                 )
                 tool_result_content.append(
-                    _make_api_tool_result(result, content_block.id)
+                    _make_api_tool_result(result, content_block["id"])
                 )
-                tool_output_callback(result, content_block.id)
+                tool_output_callback(result, content_block["id"])
 
         if not tool_result_content:
             return messages
@@ -144,7 +158,7 @@ async def sampling_loop(
 def _maybe_filter_to_n_most_recent_images(
     messages: list[BetaMessageParam],
     images_to_keep: int,
-    min_removal_threshold: int = 10,
+    min_removal_threshold: int,
 ):
     """
     With the assumption that images are screenshots that are of diminishing value as
@@ -156,7 +170,7 @@ def _maybe_filter_to_n_most_recent_images(
         return messages
 
     tool_result_blocks = cast(
-        list[ToolResultBlockParam],
+        list[BetaToolResultBlockParam],
         [
             item
             for message in messages
@@ -188,6 +202,37 @@ def _maybe_filter_to_n_most_recent_images(
                         continue
                 new_content.append(content)
             tool_result["content"] = new_content
+
+def _response_to_params(response: BetaMessage) -> list[BetaTextBlockParam | BetaToolUseBlockParam]:
+    res: list[BetaTextBlockParam | BetaToolUseBlockParam] = []
+    for block in response.content:
+        if isinstance(block, BetaTextBlock):
+            res.append({"type": "text", "text": block.text})
+        else:
+            res.append(cast(BetaToolUseBlockParam, block.model_dump()))
+    return res
+
+def _inject_prompt_caching(
+    messages: list[BetaMessageParam],
+):
+    """
+    With the assumption that images are screenshots that are of diminishing value as
+    the conversation progresses, remove all but the final `images_to_keep` tool_result
+    images in place, with a chunk of min_removal_threshold to reduce the amount we
+    break the implicit prompt cache.
+    """
+    
+    breakpoints_remaining = 3
+    for message in reversed(messages):
+        if message["role"] == "user" and isinstance(content := message["content"], list):
+            if breakpoints_remaining:
+                breakpoints_remaining -= 1
+                content[-1]["cache_control"] = BetaCacheControlEphemeralParam({"type": "ephemeral"})
+            else:
+                content[-1].pop("cache_control", None)
+                # we'll only every have one extra turn per loop
+                break
+
 
 
 def _make_api_tool_result(

@@ -2,7 +2,7 @@
 
 from typing import Any
 
-from anthropic.types.beta import BetaToolUnionParam
+from anthropic.types.beta import BetaCacheControlEphemeralParam, BetaToolUnionParam
 
 from .base import (
     BaseAnthropicTool,
@@ -21,8 +21,12 @@ class ToolCollection:
 
     def to_params(
         self,
+        enable_prompt_caching: bool
     ) -> list[BetaToolUnionParam]:
-        return [tool.to_params() for tool in self.tools]
+        tools = [tool.to_params() for tool in self.tools]
+        if enable_prompt_caching:
+            tools[-1]["cache_control"] = BetaCacheControlEphemeralParam({"type": "ephemeral"})
+        return tools
 
     async def run(self, *, name: str, tool_input: dict[str, Any]) -> ToolResult:
         tool = self.tool_map.get(name)

@@ -12,13 +12,10 @@ from functools import partial
 from pathlib import PosixPath
 from typing import cast
 
+from anthropic.types.beta.beta_tool_use_block_param import BetaToolUseBlockParam
 import streamlit as st
 from anthropic import APIResponse
-from anthropic.types import (
-    TextBlock,
-)
-from anthropic.types.beta import BetaMessage, BetaTextBlock, BetaToolUseBlock
-from anthropic.types.tool_use_block import ToolUseBlock
+from anthropic.types.beta import BetaContentBlockParam, BetaMessage, BetaTextBlockParam, BetaToolResultBlockParam, BetaToolUseBlock
 from streamlit.delta_generator import DeltaGenerator
 
 from computer_use_demo.loop import (
@@ -182,7 +179,7 @@ async def main():
                     else:
                         _render_message(
                             message["role"],
-                            cast(BetaTextBlock | BetaToolUseBlock, block),
+                            cast(BetaContentBlockParam | ToolResult, block),
                         )
 
         # render past http exchanges
@@ -194,7 +191,7 @@ async def main():
             st.session_state.messages.append(
                 {
                     "role": Sender.USER,
-                    "content": [TextBlock(type="text", text=new_message)],
+                    "content": [BetaTextBlockParam(type="text", text=new_message)],
                 }
             )
             _render_message(Sender.USER, new_message)
@@ -317,15 +314,11 @@ def _render_api_response(
 
 def _render_message(
     sender: Sender,
-    message: str | BetaTextBlock | BetaToolUseBlock | ToolResult,
+    message: str | BetaContentBlockParam | ToolResult,
 ):
     """Convert input from the user or output from the agent to a streamlit message."""
     # streamlit's hotreloading breaks isinstance checks, so we need to check for class names
-    is_tool_result = not isinstance(message, str) and (
-        isinstance(message, ToolResult)
-        or message.__class__.__name__ == "ToolResult"
-        or message.__class__.__name__ == "CLIResult"
-    )
+    is_tool_result = not isinstance(message, str | dict)
     if not message or (
         is_tool_result
         and st.session_state.hide_images
@@ -345,10 +338,14 @@ def _render_message(
                 st.error(message.error)
             if message.base64_image and not st.session_state.hide_images:
                 st.image(base64.b64decode(message.base64_image))
-        elif isinstance(message, BetaTextBlock) or isinstance(message, TextBlock):
-            st.write(message.text)
-        elif isinstance(message, BetaToolUseBlock) or isinstance(message, ToolUseBlock):
-            st.code(f"Tool Use: {message.name}\nInput: {message.input}")
+        elif isinstance(message, dict):
+            if message["type"] == "text":
+                st.write(message["text"])
+            elif message["type"] == "tool_use":
+                st.code(f'Tool Use: {message["name"]}\nInput: {message["input"]}')
+            else:
+                # only expected return types are text and tool_use
+                raise Exception(f'Unexpected response type {message["type"]}')
         else:
             st.markdown(message)
 
