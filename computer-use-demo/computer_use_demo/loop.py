@@ -3,8 +3,9 @@ Agentic sampling loop that calls the Anthropic API and local implementation of a
 """
 
 import platform
-import asyncio  # Added for delay logic
-import os  # For environment variable check
+import asyncio
+import os
+import sys
 from collections.abc import Callable
 from datetime import datetime
 from enum import StrEnum
@@ -65,6 +66,9 @@ def debug_print(*args):
     """Print debug information only if DEBUG_MODE environment variable is set to 'true'."""
     if os.getenv("DEBUG_MODE", "false").lower() == "true":
         print(*args)
+
+
+MAX_RETRIES = 42  # Maximum number of retries for rate limit errors
 
 
 async def sampling_loop(
@@ -170,16 +174,24 @@ async def sampling_loop(
             retry_count = 0  # Reset retry count on success
 
         except Exception as e:
+            error_message = str(e).lower()
             debug_print(f"[DEBUG] Exception caught in sampling_loop: {e}")
-            if "rate_limit_error" in str(e).lower():
+
+            if "rate_limit_error" in error_message:
+                if "daily rate limit" in error_message:
+                    debug_print("[DEBUG] Daily rate limit exceeded. Exiting program.")
+                    sys.exit(1)
                 retry_count += 1
                 delay = min(2**retry_count, 60)  # Exponential backoff with 60s cap
 
-                # Debugging: Print retry details if enabled
                 debug_print(
                     f"[DEBUG] Rate limit hit. Retry attempt: {retry_count}, "
                     f"Delaying for {delay} seconds."
                 )
+
+                if retry_count > MAX_RETRIES:
+                    debug_print("[DEBUG] Maximum retry attempts exceeded. Exiting program.")
+                    sys.exit(1)
 
                 await asyncio.sleep(delay)  # Introduce delay before retry
             else:
