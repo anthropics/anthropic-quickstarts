@@ -39,7 +39,7 @@ Each quickstart project comes with its own README and setup instructions. Genera
 ## Explore Further
 
 To deepen your understanding of working with Claude and the Anthropic API, check out these resources:
-
+-
 - [Anthropic API Documentation](https://docs.anthropic.com)
 - [Anthropic Cookbook](https://github.com/anthropics/anthropic-cookbook) - A collection of code snippets and guides for common tasks
 - [Anthropic API Fundamentals Course](https://github.com/anthropics/courses/tree/master/anthropic_api_fundamentals)
