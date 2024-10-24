@@ -7,7 +7,7 @@ Anthropic Quickstarts is a collection of projects designed to help developers qu
 To use these quickstarts, you'll need an Anthropic API key. If you don't have one yet, you can sign up for free at [console.anthropic.com](https://console.anthropic.com).
 
 ## Available Quickstarts
-
+v0 0.0.5
 ### Customer Support Agent
 
 A customer support agent powered by Claude. This project demonstrates how to leverage Claude's natural language understanding and generation capabilities to create an AI-assisted customer support system with access to a knowledge base.
