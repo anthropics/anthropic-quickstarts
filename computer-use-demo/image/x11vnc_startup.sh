@@ -5,11 +5,8 @@ echo "starting vnc"
     -forever \
     -shared \
     -wait 50 \
-    -timeout 60 \
-    -noxrecord \
-    -noxfixes \
-    -noxdamage \
     -rfbport 5900 \
+    -nopw \
     2>/tmp/x11vnc_stderr.log) &
 
 x11vnc_pid=$!
