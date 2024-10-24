@@ -172,3 +172,7 @@ docker run \
 ```
 
 The docker run command above mounts the repo inside the docker image, such that you can edit files from the host. Streamlit is already configured with auto reloading.
+
+## Appendix
+
+- [Instant Claude Computer Use Demo - No Installation Required](https://labex.io/labs/docker-instant-claude-computer-use-demo-414899)
