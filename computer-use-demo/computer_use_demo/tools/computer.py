@@ -146,7 +146,7 @@ class ComputerTool(BaseAnthropicTool):
                 return await self.shell(f"{self.xdotool} key -- {text}")
             elif action == "type":
                 results: list[ToolResult] = []
-                for chunk in chunks(text, TYPING_GROUP_SIZE):
+                for chunk in chunks(text.replace('\n', '\r'), TYPING_GROUP_SIZE):
                     cmd = f"{self.xdotool} type --delay {TYPING_DELAY_MS} -- {shlex.quote(chunk)}"
                     results.append(await self.shell(cmd, take_screenshot=False))
                 screenshot_base64 = (await self.screenshot()).base64_image
