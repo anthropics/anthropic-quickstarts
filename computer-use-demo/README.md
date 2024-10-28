@@ -27,6 +27,11 @@ Please use [this form](https://forms.gle/BT1hpBrqDPDUrCqo7) to provide feedback 
 > [!IMPORTANT]
 > The components are weakly separated: the agent loop runs in the container being controlled by Claude, can only be used by one session at a time, and must be restarted or reset between sessions if necessary.
 
+## Architecture
+
+<img width="992" alt="image" src="https://github.com/user-attachments/assets/1021cbe6-027b-47c6-8439-f7caefb0a0f8">
+
+
 ## Quickstart: running the Docker container
 
 ### Anthropic API
