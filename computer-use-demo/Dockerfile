@@ -16,6 +16,7 @@ RUN apt-get update && \
     sudo \
     mutter \
     x11vnc \
+    wmctrl \
     # Python/pyenv reqs
     build-essential \
     libssl-dev  \
@@ -85,7 +86,8 @@ RUN eval "$(pyenv init -)" && \
 ENV PATH="$HOME/.pyenv/shims:$HOME/.pyenv/bin:$PATH"
 
 RUN python -m pip install --upgrade pip==23.1.2 setuptools==58.0.4 wheel==0.40.0 && \
-    python -m pip config set global.disable-pip-version-check true
+    python -m pip config set global.disable-pip-version-check true && \
+    python -m pip install fastapi uvicorn
 
 # only reinstall if requirements.txt changes
 COPY --chown=$USERNAME:$USERNAME computer_use_demo/requirements.txt $HOME/computer_use_demo/requirements.txt
