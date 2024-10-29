@@ -55,13 +55,13 @@ class EditTool(BaseAnthropicTool):
         if command == "view":
             return await self.view(_path, view_range)
         elif command == "create":
-            if not file_text:
+            if file_text is None:
                 raise ToolError("Parameter `file_text` is required for command: create")
             self.write_file(_path, file_text)
             self._file_history[_path].append(file_text)
             return ToolResult(output=f"File created successfully at: {_path}")
         elif command == "str_replace":
-            if not old_str:
+            if old_str is None:
                 raise ToolError(
                     "Parameter `old_str` is required for command: str_replace"
                 )
@@ -71,7 +71,7 @@ class EditTool(BaseAnthropicTool):
                 raise ToolError(
                     "Parameter `insert_line` is required for command: insert"
                 )
-            if not new_str:
+            if new_str is None:
                 raise ToolError("Parameter `new_str` is required for command: insert")
             return self.insert(_path, insert_line, new_str)
         elif command == "undo_edit":
