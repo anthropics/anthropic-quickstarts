@@ -125,6 +125,56 @@ This example shows how to use the Google Cloud Application Default Credentials t
 
 You can also set `GOOGLE_APPLICATION_CREDENTIALS` to use an arbitrary credential file, see the [Google Cloud Authentication documentation](https://cloud.google.com/docs/authentication/application-default-credentials#GAC) for more details.
 
+### Batch Mode on Google Cloud Run
+
+To run in Batch Mode on Google Cloud Run, you can use the following command:
+
+```bash
+docker build . -t computer-use-demo
+gcloud auth application-default login
+export VERTEX_REGION=%your_vertex_region%
+export VERTEX_PROJECT_ID=%your_vertex_project_id%
+docker run \
+    -e API_PROVIDER=vertex \
+    -e CLOUD_ML_REGION=$VERTEX_REGION \
+    -e ANTHROPIC_VERTEX_PROJECT_ID=$VERTEX_PROJECT_ID \
+    -e RUN_MODE=batch \
+    -v $HOME/.config/gcloud/application_default_credentials.json:/home/computeruse/.config/gcloud/application_default_credentials.json \
+    -p 5900:5900 \
+    -p 8501:8501 \
+    -p 6080:6080 \
+    -p 8080:8080 \
+    -p 8000:8000 \
+    -it computer-use-demo
+```
+
+To submit a task:
+
+```bash
+curl -X POST http://localhost:8000/tasks \
+  -H "Content-Type: application/json" \
+  -d '{
+    "prompt": "Open the Firefox browser and navigate to google.com"
+  }'
+```
+
+To check the status of a task:
+
+```bash
+curl http://localhost:8000/tasks | jq '.'
+```
+
+To get instance health:
+
+```bash
+curl http://localhost:8000/health
+```
+
+Notes:
+- Set instance concurrency to 1 (this avoids having multiple tasks use the same VNC session)
+- When running in Google Cloud Run, if the instance is currently processing a task, it will throw 503 errors on all parallel requests (this will cause Google Cloud Run to redirect the task to a different instance, if available)
+- Batch Mode is NOT guaranteed to work correctly when run on any other equivalent to Google Cloud Run (e.g., AWS AppRunner) - further development is needed
+
 ### Accessing the demo app
 
 Once the container is running, open your browser to [http://localhost:8080](http://localhost:8080) to access the combined interface that includes both the agent chat and desktop view.

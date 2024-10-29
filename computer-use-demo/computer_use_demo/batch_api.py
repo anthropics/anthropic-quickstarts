@@ -1,4 +1,5 @@
 from fastapi import FastAPI, BackgroundTasks, HTTPException
+from fastapi.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware  # Changed from fastapi.middleware.base
 from starlette.requests import Request  # Add this for type hints
 from starlette.responses import Response  # Add this for type hints
@@ -384,6 +385,17 @@ async def list_tasks():
 
     logger.info(f"Listing all tasks - current count: {len(tasks)}")
     return [TaskStatus(**task) for task in tasks.values()]
+
+@app.get("/health")
+async def health_check():
+    """Health check endpoint for Cloud Run"""
+    return JSONResponse(
+        status_code=200,
+        content={
+            "status": "healthy",
+            "timestamp": datetime.now().isoformat()
+        }
+    )
 
 # Add middleware for request logging
 @app.middleware("http")
