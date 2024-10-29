@@ -172,8 +172,10 @@ curl http://localhost:8000/health
 
 Notes:
 - Set instance concurrency to 1 (this avoids having multiple tasks use the same VNC session)
+- Set request timeout per instance to be 3600 seconds (1 hour)
 - When running in Google Cloud Run, if the instance is currently processing a task, it will throw 503 errors on all parallel requests (this will cause Google Cloud Run to redirect the task to a different instance, if available)
 - Batch Mode is NOT guaranteed to work correctly when run on any other equivalent to Google Cloud Run (e.g., AWS AppRunner) - further development is needed
+- When Batch Mode is enabled port 8000 is active and Streamlit is NOT active on port 8080
 
 ### Accessing the demo app
 
