@@ -1,0 +1,60 @@
+name: Balance Tracker Build & Test
+
+on:
+  push:
+    branches: [ main, feat/* ]
+    paths:
+      - 'computer-use-demo/**'
+  pull_request:
+    branches: [ main ]
+    paths:
+      - 'computer-use-demo/**'
+  repository_dispatch:
+    types: [ manual-trigger ]
+  workflow_dispatch:
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}/anthropic-balance-tracker
+
+jobs:
+  build-and-test:
+    runs-on: self-hosted
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          cd computer-use-demo
+          pip install -e .
+          pip install pytest pytest-cov pytest-asyncio
+
+      - name: Run tests
+        run: |
+          cd computer-use-demo
+          python -m pytest tests/balance_tracker -v --cov=computer_use_demo
+
+      - name: Build Docker image
+        run: |
+          cd computer-use-demo
+          docker build -t anthropic-balance-tracker:latest -f Dockerfile.balance-tracker .
+          docker tag anthropic-balance-tracker:latest anthropic-balance-tracker:${{ github.sha }}
+          
+      - name: Test the container
+        run: |
+          cd computer-use-demo
+          # Run container with test configuration
+          docker run --rm \
+            -e ANTHROPIC_API_KEY=test-key \
+            anthropic-balance-tracker:latest \
+            python -m pytest tests/balance_tracker -v
