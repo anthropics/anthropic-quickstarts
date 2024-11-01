@@ -1,0 +1,30 @@
+FROM ubuntu:22.04
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    python3-pip \
+    python3-venv \
+    streamlit \
+    && rm -rf /var/lib/apt/lists/*
+
+# Create app directory
+WORKDIR /app
+
+# Install Python dependencies
+COPY setup.py .
+RUN pip3 install -e .
+
+# Copy application files
+COPY computer_use_demo/balance_tracker computer_use_demo/balance_tracker
+COPY tests/balance_tracker tests/balance_tracker
+
+# Create data directory with appropriate permissions  
+RUN mkdir -p /data && chmod 777 /data
+
+# Set environment variables
+ENV BALANCE_DATA_DIR=/data
+ENV STREAMLIT_SERVER_PORT=8501
+
+# Run the application
+EXPOSE 8501
+CMD ["python3", "-m", "streamlit", "run", "computer_use_demo/balance_tracker/balance_tracker_v3.py"]
