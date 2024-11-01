@@ -1,4 +1,4 @@
-name: Balance Tracker Build & Publish
+name: Balance Tracker Build & Test
 
 on:
   push:
