@@ -9,6 +9,9 @@ on:
     branches: [ main ]
     paths:
       - 'computer-use-demo/**'
+  repository_dispatch:
+    types: [ manual-trigger ]
+  workflow_dispatch:
 
 env:
   REGISTRY: ghcr.io
