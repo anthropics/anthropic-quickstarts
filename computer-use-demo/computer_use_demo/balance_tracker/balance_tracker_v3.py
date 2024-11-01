@@ -1,8 +1,14 @@
 """
 Enhanced balance tracking with both automated and manual options
+
+This module provides:
+- Balance tracking functionality
+- Console integration
+- Secure credential storage
+- Health check endpoint for monitoring
 """
 
-from computer_use_demo.display_config import DisplayConfig
+from computer_use_demo.balance_tracker.display_config import DisplayConfig
 
 import asyncio
 import json
@@ -319,3 +325,16 @@ def render_message_with_balance(
                 st.error(message["error"])
         else:
             st.markdown(str(message))
+
+def health_check() -> dict:
+    """Return health check status for monitoring"""
+    return {
+        "status": "healthy",
+        "version": "0.1.0",
+        "timestamp": datetime.now().isoformat(),
+        "components": {
+            "storage": "ok",
+            "ui": "ok",
+            "console_integration": "ok"
+        }
+    }

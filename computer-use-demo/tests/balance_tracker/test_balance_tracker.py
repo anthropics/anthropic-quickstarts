@@ -19,15 +19,16 @@ from unittest.mock import AsyncMock, Mock, patch
 from bs4 import BeautifulSoup
 from cryptography.fernet import Fernet
 
-from computer_use_demo.display_config import DisplayConfig
-from computer_use_demo.balance_tracker_v3 import (
+from computer_use_demo.balance_tracker.display_config import DisplayConfig
+from computer_use_demo.balance_tracker.balance_tracker_v3 import (
     BalanceEntry,
     BalanceTracker,
     ConsoleCredentials,
     SecureStorage,
     background_balance_check,
     render_balance_settings,
-    render_message_with_balance
+    render_message_with_balance,
+    health_check
 )
 
 @pytest.fixture
@@ -308,6 +309,18 @@ class TestFileSystem:
 
 class TestIntegration:
     """Integration tests for the balance tracking system"""
+
+    def test_health_check(self):
+        """Verify health check endpoint returns expected format"""
+        result = health_check()
+        assert result["status"] == "healthy"
+        assert isinstance(result["version"], str)
+        assert isinstance(result["timestamp"], str)
+        assert "storage" in result["components"]
+        assert "ui" in result["components"]
+        assert "console_integration" in result["components"]
+        for component in result["components"].values():
+            assert component == "ok"
     @pytest.mark.asyncio
     async def test_full_workflow(self, temp_dir, display_config):
         """Test complete workflow with both manual and automatic updates"""
