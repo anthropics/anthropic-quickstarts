@@ -29,7 +29,40 @@ Please use [this form](https://forms.gle/BT1hpBrqDPDUrCqo7) to provide feedback 
 
 ## Architecture
 
-<img width="992" alt="image" src="https://github.com/user-attachments/assets/1021cbe6-027b-47c6-8439-f7caefb0a0f8">
+```mermaid
+architecture-beta
+    group docker(server)[Docker Ubuntu 22_04]
+    group anthropic[Anthropic]
+
+    service http_server(server)[http_server 8080] in docker
+    service noVNC(server)[noVNC 6080] in docker
+    service x11vnc(server)[x11vnc 5900] in docker
+    service Xvfb[Xvfb] in docker
+    service mutter[mutter] in docker
+    service tint2[tint2] in docker
+    service xdotool(server)[xdotool] in docker
+    service streamlit(server)[streamlit 8501] in docker
+    service claude(cloud)[Claude] in anthropic
+    junction one
+    junction two
+    junction three
+    junction four
+
+    http_server:R -- L:three
+    three:R --> L:noVNC
+    three:T -- B:four
+    four:R --> L:streamlit
+    noVNC:R --> L:x11vnc
+    streamlit:R --> L:xdotool
+    streamlit:T --> B:claude
+    x11vnc:R -- L:one
+    one:R -- L:mutter
+    one:T -- B:two
+    two:R -- L:tint2
+    tint2:T -- B:Xvfb
+    mutter:T -- B:tint2
+    xdotool:R -- L:two
+```
 
 
 ## Quickstart: running the Docker container
