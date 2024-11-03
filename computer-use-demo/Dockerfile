@@ -7,6 +7,7 @@ RUN apt-get update && \
     apt-get -y upgrade && \
     apt-get -y install \
     build-essential \
+    gettext-base \
     # UI Requirements
     xvfb \
     xterm \
@@ -18,6 +19,7 @@ RUN apt-get update && \
     x11vnc \
     # Python/pyenv reqs
     build-essential \
+    gettext-base \
     libssl-dev  \
     zlib1g-dev \
     libbz2-dev \
