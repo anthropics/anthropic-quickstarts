@@ -154,7 +154,10 @@ class EditTool(BaseAnthropicTool):
         )
 
     def str_replace(self, path: Path, old_str: str, new_str: str | None):
-        """Implement the str_replace command, which replaces old_str with new_str in the file content"""
+        """Implement the str_replace command, which replaces old_str with new_str in the file
+        content"""
+        self._populate_file_history_if_having_content_before_edit(path)
+
         # Read the file content
         file_content = self.read_file(path).expandtabs()
         old_str = old_str.expandtabs()
@@ -202,7 +205,10 @@ class EditTool(BaseAnthropicTool):
         return CLIResult(output=success_msg)
 
     def insert(self, path: Path, insert_line: int, new_str: str):
-        """Implement the insert command, which inserts new_str at the specified line in the file content."""
+        """Implement the insert command, which inserts new_str at the specified line in the file
+        content."""
+        self._populate_file_history_if_having_content_before_edit(path)
+
         file_text = self.read_file(path).expandtabs()
         new_str = new_str.expandtabs()
         file_text_lines = file_text.split("\n")
@@ -242,10 +248,11 @@ class EditTool(BaseAnthropicTool):
 
     def undo_edit(self, path: Path):
         """Implement the undo_edit command."""
-        if not self._file_history[path]:
+        if not self._file_history[path] or len(self._file_history[path]) <= 1:
             raise ToolError(f"No edit history found for {path}.")
 
-        old_text = self._file_history[path].pop()
+        self._file_history[path].pop()
+        old_text = self._file_history[path][-1]
         self.write_file(path, old_text)
 
         return CLIResult(
@@ -265,6 +272,15 @@ class EditTool(BaseAnthropicTool):
             path.write_text(file)
         except Exception as e:
             raise ToolError(f"Ran into {e} while trying to write to {path}") from None
+
+    def _populate_file_history_if_having_content_before_edit(self, path: Path) -> None:
+        """
+        Populate the file history with the current file content.
+        """
+        # Check if the file exists or history is not empty
+        if len(self._file_history[path]) > 0 or not path.exists():
+            return
+        self._file_history[path].append(self.read_file(path))
 
     def _make_output(
         self,
