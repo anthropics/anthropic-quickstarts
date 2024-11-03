@@ -1,5 +1,5 @@
 env:
-  REGISTRY: ghcr.io/anthropics/anthropic-quickstarts
+  REGISTRY: ghcr.io/anthropics/anthropic-quickstarts-libertyteeth
 name: build
 on:
   pull_request:
@@ -18,7 +18,7 @@ jobs:
     with:
       platform: amd64
       builder: ubuntu-latest-16core
-      registry: ghcr.io/anthropics/anthropic-quickstarts
+      registry: ghcr.io/anthropics/anthropic-quickstarts-libertyteeth
       tag_prefix: computer-use-demo-
       context: computer-use-demo
     permissions:
@@ -29,7 +29,7 @@ jobs:
     with:
       platform: arm64
       builder: ubuntu-22.04-arm64-16core
-      registry: ghcr.io/anthropics/anthropic-quickstarts
+      registry: ghcr.io/anthropics/anthropic-quickstarts-libertyteeth
       tag_prefix: computer-use-demo-
       context: computer-use-demo
     permissions:
