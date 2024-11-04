@@ -3,10 +3,13 @@ Agentic sampling loop that calls the Anthropic API and local implementation of a
 """
 
 import platform
+import logging
 from collections.abc import Callable
 from datetime import datetime
 from enum import StrEnum
 from typing import Any, cast
+
+logging.basicConfig(level=logging.INFO)
 
 import httpx
 from anthropic import (
@@ -39,13 +42,33 @@ class APIProvider(StrEnum):
     ANTHROPIC = "anthropic"
     BEDROCK = "bedrock"
     VERTEX = "vertex"
+    OLLAMA = "ollama"
 
 
 PROVIDER_TO_DEFAULT_MODEL_NAME: dict[APIProvider, str] = {
     APIProvider.ANTHROPIC: "claude-3-5-sonnet-20241022",
     APIProvider.BEDROCK: "anthropic.claude-3-5-sonnet-20241022-v2:0",
     APIProvider.VERTEX: "claude-3-5-sonnet-v2@20241022",
+    APIProvider.OLLAMA: "llama2",
 }
+
+class OllamaClient:
+    def __init__(self, base_url: str = "http://88.166.175.23:11434"):
+        self.base_url = base_url
+        self.session = httpx.AsyncClient(base_url=base_url)
+        
+    async def create_completion(self, model: str, messages: list[dict], **kwargs):
+        data = {
+            "model": model,
+            "messages": messages,
+            "stream": False,
+        }
+        response = await self.session.post("/api/chat", json=data)
+        response.raise_for_status()
+        return response.json()
+
+    async def messages_create(self, **kwargs):
+        return await self.create_completion(**kwargs)
 
 
 # This system prompt is optimized for the Docker environment in this repository and
@@ -109,6 +132,10 @@ async def sampling_loop(
             client = AnthropicVertex()
         elif provider == APIProvider.BEDROCK:
             client = AnthropicBedrock()
+        elif provider == APIProvider.OLLAMA:
+            client = OllamaClient()
+            enable_prompt_caching = False  # Ollama n'utilise pas le cache prompt
+            logging.info(f"Using Ollama API at {client.base_url} with model {model}")
 
         if enable_prompt_caching:
             betas.append(PROMPT_CACHING_BETA_FLAG)
@@ -129,14 +156,41 @@ async def sampling_loop(
         # implementation may be able call the SDK directly with:
         # `response = client.messages.create(...)` instead.
         try:
-            raw_response = client.beta.messages.with_raw_response.create(
-                max_tokens=max_tokens,
-                messages=messages,
-                model=model,
-                system=[system],
-                tools=tool_collection.to_params(),
-                betas=betas,
-            )
+            if provider == APIProvider.OLLAMA:
+                # Préparer les messages pour Ollama
+                ollama_messages = []
+                if system.get("text"):
+                    ollama_messages.append({"role": "system", "content": system["text"]})
+                for msg in messages:
+                    if isinstance(msg["content"], str):
+                        ollama_messages.append({
+                            "role": msg["role"],
+                            "content": msg["content"]
+                        })
+                    elif isinstance(msg["content"], list):
+                        content = ""
+                        for block in msg["content"]:
+                            if block.get("type") == "text":
+                                content += block["text"] + "\n"
+                        if content:
+                            ollama_messages.append({
+                                "role": msg["role"],
+                                "content": content.strip()
+                            })
+                
+                raw_response = await client.create_completion(
+                    model=model,
+                    messages=ollama_messages
+                )
+            else:
+                raw_response = client.beta.messages.with_raw_response.create(
+                    max_tokens=max_tokens,
+                    messages=messages,
+                    model=model,
+                    system=[system],
+                    tools=tool_collection.to_params(),
+                    betas=betas,
+                )
         except (APIStatusError, APIResponseValidationError) as e:
             api_response_callback(e.request, e.response, e)
             return messages
@@ -227,14 +281,22 @@ def _maybe_filter_to_n_most_recent_images(
 
 
 def _response_to_params(
-    response: BetaMessage,
+    response: BetaMessage | dict,
 ) -> list[BetaTextBlockParam | BetaToolUseBlockParam]:
     res: list[BetaTextBlockParam | BetaToolUseBlockParam] = []
-    for block in response.content:
-        if isinstance(block, BetaTextBlock):
-            res.append({"type": "text", "text": block.text})
-        else:
-            res.append(cast(BetaToolUseBlockParam, block.model_dump()))
+    
+    if isinstance(response, dict):  # Réponse Ollama
+        # Convertir la réponse Ollama en format compatible
+        res.append({
+            "type": "text",
+            "text": response.get("message", {}).get("content", "")
+        })
+    else:  # Réponse Anthropic
+        for block in response.content:
+            if isinstance(block, BetaTextBlock):
+                res.append({"type": "text", "text": block.text})
+            else:
+                res.append(cast(BetaToolUseBlockParam, block.model_dump()))
     return res
 
 
