@@ -134,7 +134,7 @@ async def sampling_loop(
                 messages=messages,
                 model=model,
                 system=[system],
-                tools=tool_collection.to_params(),
+                tools=tool_collection.to_params(enable_prompt_caching),
                 betas=betas,
             )
         except (APIStatusError, APIResponseValidationError) as e:
@@ -242,11 +242,12 @@ def _inject_prompt_caching(
     messages: list[BetaMessageParam],
 ):
     """
-    Set cache breakpoints for the 3 most recent turns
-    one cache breakpoint is left for tools/system prompt, to be shared across sessions
+    Set cache breakpoints for the 2 most recent turns
+    one cache breakpoint is left for system prompt, to be shared across sessions
+    one cache breakpoint is left for system prompt, to be shared across sessions
     """
 
-    breakpoints_remaining = 3
+    breakpoints_remaining = 2
     for message in reversed(messages):
         if message["role"] == "user" and isinstance(
             content := message["content"], list
