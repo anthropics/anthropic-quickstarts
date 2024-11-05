@@ -102,4 +102,19 @@ ENV DISPLAY_NUM=$DISPLAY_NUM
 ENV HEIGHT=$HEIGHT
 ENV WIDTH=$WIDTH
 
+
+
+# project-specific setup
+RUN curl -sSL https://install.python-poetry.org | python3 -
+RUN echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.bashrc
+ENV PATH="$HOME/.local/bin:$PATH"
+
+
+RUN curl -fsSL https://get.pulumi.com | sh
+RUN echo 'export PATH="$HOME/.pulumi/bin:$PATH"' >> ~/.bashrc
+ENV PATH="$HOME/.pulumi/bin:$PATH"
+RUN pulumi plugin install resource aws
+
+
+
 ENTRYPOINT [ "./entrypoint.sh" ]
