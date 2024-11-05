@@ -21,8 +21,12 @@ class ToolCollection:
 
     def to_params(
         self,
+        enable_caching:bool = False
     ) -> list[BetaToolUnionParam]:
-        return [tool.to_params() for tool in self.tools]
+        tools = [tool.to_params() for tool in self.tools]
+        if enable_caching:
+            tools[-1]["cache_control"] = {"type": "ephemeral"}
+        return tools
 
     async def run(self, *, name: str, tool_input: dict[str, Any]) -> ToolResult:
         tool = self.tool_map.get(name)
