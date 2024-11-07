@@ -158,9 +158,9 @@ We do not recommend sending screenshots in resolutions above [XGA/WXGA](https://
 Relying on the image resizing behavior in the API will result in lower model accuracy and slower performance than implementing scaling in your tools directly. The `computer` tool implementation in this project demonstrates how to scale both images and coordinates from higher resolutions to the suggested resolutions.
 
 
-If you are implementing your own computer use demo, we recommended using XGA resolution (1024x768): 
-- For higher resolutions, we recommend scaling the image down to XGA and letting the model generate coordinates within the 1024x768 coordinate system, then scaling the coordinates back to the original resolution proportionally.
-- For lower resolutions or smaller devices (e.g. mobile), we recommend padding the screen with black pixels up to 1024X768.
+When implementing computer use yourself, we recommend using XGA resolution (1024x768):
+- For higher resolutions: Scale the image down to XGA and let the model interact with this scaled version, then map the coordinates back to the original resolution proportionally.
+- For lower resolutions or smaller devices (e.g. mobile devices): Add black padding around the display area until it reaches 1024x768.
 
 ## Development
 
