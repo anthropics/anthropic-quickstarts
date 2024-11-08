@@ -244,7 +244,7 @@ def _inject_prompt_caching(
     """
     Set cache breakpoints for the 2 most recent turns
     one cache breakpoint is left for system prompt, to be shared across sessions
-    one cache breakpoint is left for system prompt, to be shared across sessions
+    one cache breakpoint is left for tools, to be shared across sessions
     """
 
     breakpoints_remaining = 2
