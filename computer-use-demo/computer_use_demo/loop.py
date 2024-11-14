@@ -3,11 +3,13 @@ Agentic sampling loop that calls the Anthropic API and local implementation of a
 """
 
 import platform
+import ssl
 from collections.abc import Callable
 from datetime import datetime
 from enum import StrEnum
 from typing import Any, cast
 
+import certifi
 import httpx
 from anthropic import (
     Anthropic,
@@ -103,7 +105,12 @@ async def sampling_loop(
         betas = [COMPUTER_USE_BETA_FLAG]
         image_truncation_threshold = 10
         if provider == APIProvider.ANTHROPIC:
-            client = Anthropic(api_key=api_key)
+            # explicit SSL minimum version to avoid < TLSv1.2
+            ssl_context = ssl.create_default_context(cafile=certifi.where())
+            ssl_context.minimum_version = ssl.TLSVersion.TLSv1_2
+            http_client = httpx.Client(verify=ssl_context)
+
+            client = Anthropic(api_key=api_key, http_client=http_client, max_retries=5)
             enable_prompt_caching = True
         elif provider == APIProvider.VERTEX:
             client = AnthropicVertex()
