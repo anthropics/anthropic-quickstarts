@@ -254,14 +254,15 @@ def maybe_add_interruption_blocks():
         block["id"] for block in last_message["content"] if block["type"] == "tool_use"
     ]
     for tool_use_id in previous_tool_use_ids:
-        tool_result = BetaToolResultBlockParam(
-            tool_use_id=tool_use_id,
-            type="tool_result",
-            content=INTERRUPT_TOOL_ERROR,
-            is_error=True,
+        st.session_state.tools[tool_use_id] = ToolResult(error=INTERRUPT_TOOL_ERROR)
+        result.append(
+            BetaToolResultBlockParam(
+                tool_use_id=tool_use_id,
+                type="tool_result",
+                content=INTERRUPT_TOOL_ERROR,
+                is_error=True,
+            )
         )
-        st.session_state.tools[tool_use_id] = tool_result
-        result.append(tool_result)
     result.append(BetaTextBlockParam(type="text", text=INTERRUPT_TEXT))
     return result
 
