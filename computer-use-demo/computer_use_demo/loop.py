@@ -103,7 +103,7 @@ async def sampling_loop(
         betas = [COMPUTER_USE_BETA_FLAG]
         image_truncation_threshold = 10
         if provider == APIProvider.ANTHROPIC:
-            client = Anthropic(api_key=api_key)
+            client = Anthropic(api_key=api_key, max_retries=4)
             enable_prompt_caching = True
         elif provider == APIProvider.VERTEX:
             client = AnthropicVertex()
