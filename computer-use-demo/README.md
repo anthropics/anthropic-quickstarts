@@ -34,6 +34,7 @@ Please use [this form](https://forms.gle/BT1hpBrqDPDUrCqo7) to provide feedback 
 > [!TIP]
 > You can find your API key in the [Anthropic Console](https://console.anthropic.com/).
 
+For Linux/macOS:
 ```bash
 export ANTHROPIC_API_KEY=%your_api_key%
 docker run \
@@ -44,6 +45,12 @@ docker run \
     -p 6080:6080 \
     -p 8080:8080 \
     -it ghcr.io/anthropics/anthropic-quickstarts:computer-use-demo-latest
+```
+
+For Windows:
+```powershell
+set ANTHROPIC_API_KEY=%your_api_key%
+docker run -e ANTHROPIC_API_KEY=%ANTHROPIC_API_KEY% -v %USERPROFILE%\.anthropic:/home/computeruse/.anthropic -p 5900:5900 -p 8501:8501 -p 6080:6080 -p 8080:8080 -it ghcr.io/anthropics/anthropic-quickstarts:computer-use-demo-latest
 ```
 
 Once the container is running, see the [Accessing the demo app](#accessing-the-demo-app) section below for instructions on how to connect to the interface.
@@ -59,6 +66,7 @@ You have a few options for authenticating with Bedrock. See the [boto3 documenta
 
 #### Option 1: (suggested) Use the host's AWS credentials file and AWS profile
 
+For Linux/macOS:
 ```bash
 export AWS_PROFILE=<your_aws_profile>
 docker run \
@@ -74,10 +82,15 @@ docker run \
     -it ghcr.io/anthropics/anthropic-quickstarts:computer-use-demo-latest
 ```
 
-Once the container is running, see the [Accessing the demo app](#accessing-the-demo-app) section below for instructions on how to connect to the interface.
+For Windows:
+```powershell
+set AWS_PROFILE=<your_aws_profile>
+docker run -e API_PROVIDER=bedrock -e AWS_PROFILE=%AWS_PROFILE% -e AWS_REGION=us-west-2 -v %USERPROFILE%\.aws:/home/computeruse/.aws -v %USERPROFILE%\.anthropic:/home/computeruse/.anthropic -p 5900:5900 -p 8501:8501 -p 6080:6080 -p 8080:8080 -it ghcr.io/anthropics/anthropic-quickstarts:computer-use-demo-latest
+```
 
 #### Option 2: Use an access key and secret
 
+For Linux/macOS:
 ```bash
 export AWS_ACCESS_KEY_ID=%your_aws_access_key%
 export AWS_SECRET_ACCESS_KEY=%your_aws_secret_access_key%
@@ -96,12 +109,19 @@ docker run \
     -it ghcr.io/anthropics/anthropic-quickstarts:computer-use-demo-latest
 ```
 
-Once the container is running, see the [Accessing the demo app](#accessing-the-demo-app) section below for instructions on how to connect to the interface.
+For Windows:
+```powershell
+set AWS_ACCESS_KEY_ID=%your_aws_access_key%
+set AWS_SECRET_ACCESS_KEY=%your_aws_secret_access_key%
+set AWS_SESSION_TOKEN=%your_aws_session_token%
+docker run -e API_PROVIDER=bedrock -e AWS_ACCESS_KEY_ID=%AWS_ACCESS_KEY_ID% -e AWS_SECRET_ACCESS_KEY=%AWS_SECRET_ACCESS_KEY% -e AWS_SESSION_TOKEN=%AWS_SESSION_TOKEN% -e AWS_REGION=us-west-2 -v %USERPROFILE%\.anthropic:/home/computeruse/.anthropic -p 5900:5900 -p 8501:8501 -p 6080:6080 -p 8080:8080 -it ghcr.io/anthropics/anthropic-quickstarts:computer-use-demo-latest
+```
 
 ### Vertex
 
 You'll need to pass in Google Cloud credentials with appropriate permissions to use Claude on Vertex.
 
+For Linux/macOS:
 ```bash
 docker build . -t computer-use-demo
 gcloud auth application-default login
@@ -117,6 +137,15 @@ docker run \
     -p 6080:6080 \
     -p 8080:8080 \
     -it computer-use-demo
+```
+
+For Windows:
+```powershell
+docker build . -t computer-use-demo
+gcloud auth application-default login
+set VERTEX_REGION=%your_vertex_region%
+set VERTEX_PROJECT_ID=%your_vertex_project_id%
+docker run -e API_PROVIDER=vertex -e CLOUD_ML_REGION=%VERTEX_REGION% -e ANTHROPIC_VERTEX_PROJECT_ID=%VERTEX_PROJECT_ID% -v %USERPROFILE%\.config\gcloud\application_default_credentials.json:/home/computeruse/.config/gcloud/application_default_credentials.json -p 5900:5900 -p 8501:8501 -p 6080:6080 -p 8080:8080 -it computer-use-demo
 ```
 
 Once the container is running, see the [Accessing the demo app](#accessing-the-demo-app) section below for instructions on how to connect to the interface.
@@ -141,6 +170,7 @@ Alternative access points:
 
 Environment variables `WIDTH` and `HEIGHT` can be used to set the screen size. For example:
 
+For Linux/macOS:
 ```bash
 docker run \
     -e ANTHROPIC_API_KEY=$ANTHROPIC_API_KEY \
@@ -154,9 +184,13 @@ docker run \
     -it ghcr.io/anthropics/anthropic-quickstarts:computer-use-demo-latest
 ```
 
+For Windows:
+```powershell
+docker run -e ANTHROPIC_API_KEY=%ANTHROPIC_API_KEY% -v %USERPROFILE%\.anthropic:/home/computeruse/.anthropic -p 5900:5900 -p 8501:8501 -p 6080:6080 -p 8080:8080 -e WIDTH=1920 -e HEIGHT=1080 -it ghcr.io/anthropics/anthropic-quickstarts:computer-use-demo-latest
+```
+
 We do not recommend sending screenshots in resolutions above [XGA/WXGA](https://en.wikipedia.org/wiki/Display_resolution_standards#XGA) to avoid issues related to [image resizing](https://docs.anthropic.com/en/docs/build-with-claude/vision#evaluate-image-size).
 Relying on the image resizing behavior in the API will result in lower model accuracy and slower performance than implementing scaling in your tools directly. The `computer` tool implementation in this project demonstrates how to scale both images and coordinates from higher resolutions to the suggested resolutions.
-
 
 When implementing computer use yourself, we recommend using XGA resolution (1024x768):
 - For higher resolutions: Scale the image down to XGA and let the model interact with this scaled version, then map the coordinates back to the original resolution proportionally.
@@ -164,6 +198,7 @@ When implementing computer use yourself, we recommend using XGA resolution (1024
 
 ## Development
 
+For Linux/macOS:
 ```bash
 ./setup.sh  # configure venv, install development dependencies, and install pre-commit hooks
 docker build . -t computer-use-demo:local  # manually build the docker image (optional)
@@ -177,6 +212,14 @@ docker run \
     -p 6080:6080 \
     -p 8080:8080 \
     -it computer-use-demo:local  # can also use ghcr.io/anthropics/anthropic-quickstarts:computer-use-demo-latest
+```
+
+For Windows:
+```powershell
+./setup.sh  # configure venv, install development dependencies, and install pre-commit hooks
+docker build . -t computer-use-demo:local  # manually build the docker image (optional)
+set ANTHROPIC_API_KEY=%your_api_key%
+docker run -e ANTHROPIC_API_KEY=%ANTHROPIC_API_KEY% -v %CD%\computer_use_demo:/home/computeruse/computer_use_demo/ -v %USERPROFILE%\.anthropic:/home/computeruse/.anthropic -p 5900:5900 -p 8501:8501 -p 6080:6080 -p 8080:8080 -it computer-use-demo:local
 ```
 
 The docker run command above mounts the repo inside the docker image, such that you can edit files from the host. Streamlit is already configured with auto reloading.
