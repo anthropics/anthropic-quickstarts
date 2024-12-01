@@ -39,7 +39,7 @@ export ANTHROPIC_API_KEY=%your_api_key%
 docker run \
     -e ANTHROPIC_API_KEY=$ANTHROPIC_API_KEY \
     -v $HOME/.anthropic:/home/computeruse/.anthropic \
-    -p 5900:5900 \
+    -p 5901:5900 \
     -p 8501:8501 \
     -p 6080:6080 \
     -p 8080:8080 \
@@ -168,15 +168,15 @@ When implementing computer use yourself, we recommend using XGA resolution (1024
 ./setup.sh  # configure venv, install development dependencies, and install pre-commit hooks
 docker build . -t computer-use-demo:local  # manually build the docker image (optional)
 export ANTHROPIC_API_KEY=%your_api_key%
-docker run \
+docker run --name computer-use-demo-halda \
     -e ANTHROPIC_API_KEY=$ANTHROPIC_API_KEY \
     -v $(pwd)/computer_use_demo:/home/computeruse/computer_use_demo/ `# mount local python module for development` \
     -v $HOME/.anthropic:/home/computeruse/.anthropic \
-    -p 5900:5900 \
+    -p 5901:5900 \
     -p 8501:8501 \
     -p 6080:6080 \
     -p 8080:8080 \
-    -it computer-use-demo:local  # can also use ghcr.io/anthropics/anthropic-quickstarts:computer-use-demo-latest
+    -it computer-use-demo:local
 ```
 
 The docker run command above mounts the repo inside the docker image, such that you can edit files from the host. Streamlit is already configured with auto reloading.

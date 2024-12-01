@@ -1,5 +1,19 @@
-streamlit>=1.38.0
-anthropic[bedrock,vertex]>=0.37.1
-jsonschema==4.22.0
-boto3>=1.28.57
-google-auth<3,>=2
+streamlit>=1.38.0,<2.0.0
+anthropic[bedrock,vertex]>=0.37.1,<1.0.0
+jsonschema>=4.22.0,<5.0.0
+boto3>=1.28.57,<2.0.0
+google-auth>=2.0.0,<3.0.0
+
+# LangChain Core Requirements
+langchain>=0.3.7,<0.4.0
+langchain-anthropic>=0.3.0,<0.4.0
+langchain-core>=0.3.17,<0.4.0
+langchain-community>=0.3.7,<0.4.0
+langchain-experimental>=0.3.3,<0.4.0
+langgraph>=0.2.53,<0.3.0
+
+# Additional Dependencies (if not already present)
+aiohttp>=3.8.0,<4.0.0
+typing-extensions>=4.5.0,<5.0.0
+python-dotenv>=0.19.0,<1.0.0
+pydantic>=2.0.0,<3.0.0
