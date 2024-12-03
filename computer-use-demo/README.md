@@ -180,3 +180,72 @@ docker run \
 ```
 
 The docker run command above mounts the repo inside the docker image, such that you can edit files from the host. Streamlit is already configured with auto reloading.
+
+## Using with Telegram
+
+To use with Telegram:
+
+1. Get a bot token from @BotFather on Telegram
+2. Set the environment variables:
+   ```bash
+   export TELEGRAM_BOT_TOKEN='your_token_here'
+   export TELEGRAM_OWNER_ID='your_telegram_id'  # Required: Your Telegram user ID
+   export TELEGRAM_ALLOWED_USERS='id1,id2,id3'  # Optional: Comma-separated list of allowed user IDs
+   ```
+3. Run the bot:
+   ```bash
+   python -m computer_use_demo.telegram_bot
+   ```
+
+### Development with Hot Reload
+
+For development, you can use hot reload to automatically restart the bot when code changes:
+
+```bash
+python -m computer_use_demo.run_bot
+```
+
+This will:
+- Watch for changes in Python files
+- Automatically restart the bot when changes are detected
+- Show bot output and errors in real-time
+- Handle crashes and unexpected bot termination
+
+### Running in Docker
+
+To run the Telegram bot in Docker container, first set up your environment:
+
+```bash
+# Copy the example environment file
+cp .env.example .env
+
+# Edit the .env file with your settings
+nano .env  # or use any text editor
+```
+
+After configuring your .env file, run the Docker container:
+
+```bash
+# Run Docker container with env file
+docker run \
+    --env-file .env \
+    -v $(pwd)/computer_use_demo:/home/computeruse/computer_use_demo/ \
+    -v $HOME/.anthropic:/home/computeruse/.anthropic \
+    -p 5900:5900 \
+    -p 8501:8501 \
+    -p 6080:6080 \
+    -p 8080:8080 \
+    -it computer-use-demo:local
+```
+
+> Note: Make sure to add `.env` to your `.gitignore` to avoid committing sensitive information.
+
+### Security Notes:
+
+- The bot requires setting TELEGRAM_OWNER_ID for notifications and admin access
+- You can restrict access to specific users by setting TELEGRAM_ALLOWED_USERS
+- If TELEGRAM_ALLOWED_USERS is not set, all users can access the bot
+- The owner (TELEGRAM_OWNER_ID) always has access regardless of TELEGRAM_ALLOWED_USERS
+- The owner receives notifications about:
+  - Bot startup
+  - Unauthorized access attempts
