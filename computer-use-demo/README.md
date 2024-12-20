@@ -180,3 +180,11 @@ docker run \
 ```
 
 The docker run command above mounts the repo inside the docker image, such that you can edit files from the host. Streamlit is already configured with auto reloading.
+
+### Developing on macOS ARM
+
+If you are running on an ARM-based Mac, you will need to change the base image in the Dockerfile to `ubuntu:22.04` or another ARM-compatible base image. This can be done by changing the first line of the Dockerfile to:
+
+```Dockerfile
+   FROM --platform=linux/amd64 ubuntu:22.04
+```
