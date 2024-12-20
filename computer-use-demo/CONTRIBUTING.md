@@ -6,6 +6,19 @@ Thank you for your interest in contributing to the Computer Use Demo quickstart!
 
 Please be respectful and constructive in all interactions. We aim to maintain a welcoming and inclusive environment for all contributors.
 
+## Contribution Policy
+
+- Bugfixes and updates to our documentation that address correctness issues are always welcome
+- Feature additions, refactors, and documentation updates beyond the scope of correctness (major changes) are accepted at the sole determination of the maintainers. We require each major change to be submitted in a separate Pull Request. We will assess new features under the following criteria:
+  - Adherence to coding standards
+  - Ease of use as a reference implementation
+  - User experience
+  - Applicability to a wide audience of developers
+  - Minimization of third-party dependencies
+  - Does not promote a product or service
+
+Please open a github issue if you are need clarification on this policy or you want to discuss a new feature addition.
+
 ## Development Setup
 
 1. Create and activate a Python virtual environment:
