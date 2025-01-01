@@ -238,7 +238,7 @@ async def main():
                     tab=http_logs,
                     response_state=st.session_state.responses,
                 ),
-                api_key=st.session_state.api_key,
+                api_key=st.session_state.api_key.strip(),
                 only_n_most_recent_images=st.session_state.only_n_most_recent_images,
             )
 
