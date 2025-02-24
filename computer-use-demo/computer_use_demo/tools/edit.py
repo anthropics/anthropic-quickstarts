@@ -1,8 +1,6 @@
 from collections import defaultdict
 from pathlib import Path
-from typing import Literal, get_args
-
-from anthropic.types.beta import BetaToolTextEditor20241022Param
+from typing import Any, Literal, get_args
 
 from .base import BaseAnthropicTool, CLIResult, ToolError, ToolResult
 from .run import maybe_truncate, run
@@ -17,13 +15,13 @@ Command = Literal[
 SNIPPET_LINES: int = 4
 
 
-class EditTool(BaseAnthropicTool):
+class EditTool20250124(BaseAnthropicTool):
     """
     An filesystem editor tool that allows the agent to view, create, and edit files.
     The tool parameters are defined by Anthropic and are not editable.
     """
 
-    api_type: Literal["text_editor_20241022"] = "text_editor_20241022"
+    api_type: Literal["text_editor_20250124"] = "text_editor_20250124"
     name: Literal["str_replace_editor"] = "str_replace_editor"
 
     _file_history: dict[Path, list[str]]
@@ -32,7 +30,7 @@ class EditTool(BaseAnthropicTool):
         self._file_history = defaultdict(list)
         super().__init__()
 
-    def to_params(self) -> BetaToolTextEditor20241022Param:
+    def to_params(self) -> Any:
         return {
             "name": self.name,
             "type": self.api_type,
@@ -288,3 +286,7 @@ class EditTool(BaseAnthropicTool):
             + file_content
             + "\n"
         )
+
+
+class EditTool20241022(EditTool20250124):
+    api_type: Literal["text_editor_20241022"] = "text_editor_20241022"  # pyright: ignore[reportIncompatibleVariableOverride]
