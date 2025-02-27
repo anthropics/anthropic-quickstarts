@@ -54,7 +54,7 @@ Once the container is running, see the [Accessing the demo app](#accessing-the-d
 ### Bedrock
 
 > [!TIP]
-> To use the new Claude 3.5 Sonnet on Bedrock, you first need to [request model access](https://docs.aws.amazon.com/bedrock/latest/userguide/model-access-modify.html).
+> To use the new Claude 3.7 Sonnet on Bedrock, you first need to [request model access](https://docs.aws.amazon.com/bedrock/latest/userguide/model-access-modify.html).
 
 You'll need to pass in AWS credentials with appropriate permissions to use Claude on Bedrock.
 You have a few options for authenticating with Bedrock. See the [boto3 documentation](https://boto3.amazonaws.com/v1/documentation/api/latest/guide/credentials.html#environment-variables) for more details and options.
