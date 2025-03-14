@@ -2,8 +2,9 @@
 import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import Image from "next/image";
-import { Moon, Sun } from "lucide-react";
+import { Moon, Sun, BarChart3, PieChart } from "lucide-react";
 import { useTheme } from "next-themes";
+import Link from "next/link";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -36,14 +37,26 @@ const TopNavBar: React.FC<TopNavBarProps> = ({ features = {} }) => {
   return (
     <div className="flex items-center justify-between p-4">
       <div className="font-bold text-xl flex gap-2 items-center">
-        <Image
-          src={theme === "dark" ? "/wordmark-dark.svg" : "/wordmark.svg"}
-          alt="Company Wordmark"
-          width={112}
-          height={20}
-        />
+        <Link href="/">
+          <Image
+            src={theme === "dark" ? "/wordmark-dark.svg" : "/wordmark.svg"}
+            alt="Company Wordmark"
+            width={112}
+            height={20}
+          />
+        </Link>
       </div>
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-4">
+        <nav className="hidden md:flex space-x-4 items-center mr-4">
+          <Link href="/finance" className="flex items-center gap-2 hover:text-primary">
+            <PieChart className="h-4 w-4" />
+            <span>Finance</span>
+          </Link>
+          <Link href="/mcp" className="flex items-center gap-2 hover:text-primary">
+            <BarChart3 className="h-4 w-4" />
+            <span>MCP Dashboard</span>
+          </Link>
+        </nav>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="outline" size="icon">

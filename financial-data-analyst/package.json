@@ -6,7 +6,13 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "generate-doc": "ts-node tools/scripts/doc-generator.ts",
+    "doc:rfc": "ts-node tools/scripts/doc-generator.ts --type rfc",
+    "doc:prd": "ts-node tools/scripts/doc-generator.ts --type prd",
+    "doc:guideline": "ts-node tools/scripts/doc-generator.ts --type guideline",
+    "doc:task": "ts-node tools/scripts/doc-generator.ts --type tasklist",
+    "doc:adr": "ts-node tools/scripts/doc-generator.ts --type adr"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.29.0",
@@ -14,6 +20,7 @@
     "@radix-ui/react-dropdown-menu": "^2.1.2",
     "@radix-ui/react-icons": "^1.3.0",
     "@radix-ui/react-slot": "^1.1.0",
+    "@radix-ui/react-tabs": "^1.1.3",
     "@radix-ui/react-toast": "^1.2.2",
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.1.1",
@@ -28,13 +35,18 @@
     "tailwindcss-animate": "^1.0.7"
   },
   "devDependencies": {
+    "@types/inquirer": "^9.0.7",
     "@types/node": "^20",
     "@types/react": "^18",
     "@types/react-dom": "^18",
+    "@types/yargs": "^17.0.33",
     "eslint": "^8",
     "eslint-config-next": "14.2.15",
+    "inquirer": "^8.2.5",
     "postcss": "^8",
     "tailwindcss": "^3.4.1",
-    "typescript": "^5"
+    "ts-node": "^10.9.2",
+    "typescript": "^5",
+    "yargs": "^17.7.2"
   }
 }
