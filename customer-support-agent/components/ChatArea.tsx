@@ -236,7 +236,6 @@ const ConversationHeader: React.FC<ConversationHeaderProps> = ({
           </Avatar>
           <div>
             <h3 className="text-sm font-medium leading-none">AI Agent</h3>
-            <p className="text-sm text-muted-foreground">Customer support</p>
           </div>
         </>
       )}
