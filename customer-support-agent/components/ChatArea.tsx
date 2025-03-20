@@ -208,9 +208,6 @@ interface ConversationHeaderProps {
   setSelectedModel: (modelId: string) => void;
   models: Model[];
   showAvatar: boolean;
-  selectedKnowledgeBase: string;
-  setSelectedKnowledgeBase: (knowledgeBaseId: string) => void;
-  knowledgeBases: KnowledgeBase[];
 }
 
 type KnowledgeBase = {
@@ -223,9 +220,6 @@ const ConversationHeader: React.FC<ConversationHeaderProps> = ({
   setSelectedModel,
   models,
   showAvatar,
-  selectedKnowledgeBase,
-  setSelectedKnowledgeBase,
-  knowledgeBases,
 }) => (
   <div className="p-0 flex flex-col sm:flex-row items-start sm:items-center justify-between pb-2 animate-fade-in">
     <div className="flex items-center space-x-4 mb-2 sm:mb-0">
@@ -266,29 +260,6 @@ const ConversationHeader: React.FC<ConversationHeaderProps> = ({
               onSelect={() => setSelectedModel(model.id)}
             >
               {model.name}
-            </DropdownMenuItem>
-          ))}
-        </DropdownMenuContent>
-      </DropdownMenu>
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button
-            variant="outline"
-            size="sm"
-            className="flex-grow text-muted-foreground  sm:flex-grow-0"
-          >
-            {knowledgeBases.find((kb) => kb.id === selectedKnowledgeBase)
-              ?.name || "Select KB"}
-            <ChevronDown className="ml-2 h-4 w-4" />
-          </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent>
-          {knowledgeBases.map((kb) => (
-            <DropdownMenuItem
-              key={kb.id}
-              onSelect={() => setSelectedKnowledgeBase(kb.id)}
-            >
-              {kb.name}
             </DropdownMenuItem>
           ))}
         </DropdownMenuContent>
@@ -579,9 +550,6 @@ function ChatArea() {
           setSelectedModel={setSelectedModel}
           models={models}
           showAvatar={showAvatar}
-          selectedKnowledgeBase={selectedKnowledgeBase}
-          setSelectedKnowledgeBase={setSelectedKnowledgeBase}
-          knowledgeBases={knowledgeBases}
         />
         <div className="flex-1 overflow-y-auto p-4 space-y-4">
           {messages.length === 0 ? (
