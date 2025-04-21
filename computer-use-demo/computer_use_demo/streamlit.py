@@ -141,7 +141,13 @@ def _reset_model_conf():
         if "3-7" in st.session_state.model
         else MODEL_TO_MODEL_CONF.get(st.session_state.model, SONNET_3_5_NEW)
     )
-    st.session_state.tool_version = model_conf.tool_version
+
+    # If we're in radio selection mode, use the selected tool version
+    if hasattr(st.session_state, "tool_versions"):
+        st.session_state.tool_version = st.session_state.tool_versions
+    else:
+        st.session_state.tool_version = model_conf.tool_version
+
     st.session_state.has_thinking = model_conf.has_thinking
     st.session_state.output_tokens = model_conf.default_output_tokens
     st.session_state.max_output_tokens = model_conf.max_output_tokens
@@ -210,6 +216,9 @@ async def main():
             key="tool_versions",
             options=versions,
             index=versions.index(st.session_state.tool_version),
+            on_change=lambda: setattr(
+                st.session_state, "tool_version", st.session_state.tool_versions
+            ),
         )
 
         st.number_input("Max Output Tokens", key="output_tokens", step=1)
@@ -309,7 +318,7 @@ async def main():
                 ),
                 api_key=st.session_state.api_key,
                 only_n_most_recent_images=st.session_state.only_n_most_recent_images,
-                tool_version=st.session_state.tool_version,
+                tool_version=st.session_state.tool_versions,
                 max_tokens=st.session_state.output_tokens,
                 thinking_budget=st.session_state.thinking_budget
                 if st.session_state.thinking
