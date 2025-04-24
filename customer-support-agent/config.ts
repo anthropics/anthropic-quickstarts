@@ -1,11 +1,13 @@
 type Config = {
   includeLeftSidebar: boolean;
   includeRightSidebar: boolean;
+  includeFileSidebar: boolean;
 };
 
 const config: Config = {
-  includeLeftSidebar: process.env.NEXT_PUBLIC_INCLUDE_LEFT_SIDEBAR === "true",
+  includeLeftSidebar: false,
   includeRightSidebar: false,
+  includeFileSidebar: true,
 };
 
 export default config;

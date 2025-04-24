@@ -272,7 +272,7 @@ function ChatArea() {
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [showHeader, setShowHeader] = useState(false);
-  const [selectedModel, setSelectedModel] = useState("claude-3-haiku-20240307");
+  const [selectedModel, setSelectedModel] = useState("claude-3-7-sonnet-20250219");
   const [showAvatar, setShowAvatar] = useState(false);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -286,8 +286,9 @@ function ChatArea() {
   ];
 
   const models: Model[] = [
-    { id: "claude-3-haiku-20240307", name: "Claude 3 Haiku" },
+    { id: "claude-3-7-sonnet-20250219", name: "Claude 3.7 Sonnet" },
     { id: "claude-3-5-sonnet-20240620", name: "Claude 3.5 Sonnet" },
+    { id: "claude-3-haiku-20240307", name: "Claude 3 Haiku" },
   ];
 
   const scrollToBottom = () => {
@@ -368,6 +369,21 @@ function ChatArea() {
     console.log(`⏱️ ${label}: ${duration.toFixed(2)}ms`);
   };
 
+  const [attachedFile, setAttachedFile] = useState<any>(null);
+
+  // Listen for file attachment events from FileSidebar
+  useEffect(() => {
+    const handleFileAttachment = (event: CustomEvent<any>) => {
+      console.log("📎 File attached:", event.detail);
+      setAttachedFile(event.detail);
+    };
+
+    window.addEventListener('fileAttached', handleFileAttachment as EventListener);
+    return () => {
+      window.removeEventListener('fileAttached', handleFileAttachment as EventListener);
+    };
+  }, []);
+
   const handleSubmit = async (
     event: React.FormEvent<HTMLFormElement> | string,
   ) => {
@@ -385,6 +401,8 @@ function ChatArea() {
       id: crypto.randomUUID(),
       role: "user",
       content: typeof event === "string" ? event : input,
+      // Include the file data if a file is attached
+      fileData: attachedFile,
     };
 
     const placeholderMessage = {
@@ -406,6 +424,9 @@ function ChatArea() {
       placeholderMessage,
     ]);
     setInput("");
+    
+    // Clear the attached file after sending
+    setAttachedFile(null);
 
     const placeholderDisplayed = performance.now();
     logDuration("Perceived Latency", placeholderDisplayed - clientStart);
@@ -647,15 +668,31 @@ function ChatArea() {
           onSubmit={handleSubmit}
           className="flex flex-col w-full relative bg-background border rounded-xl focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2"
         >
-          <Textarea
-            value={input}
-            onChange={handleInputChange}
-            onKeyDown={handleKeyDown}
-            placeholder="Type your message here..."
-            disabled={isLoading}
-            className="resize-none min-h-[44px] bg-background  border-0 p-3 rounded-xl shadow-none focus-visible:ring-0"
-            rows={1}
-          />
+          <div className="relative">
+            <Textarea
+              value={input}
+              onChange={handleInputChange}
+              onKeyDown={handleKeyDown}
+              placeholder={attachedFile ? `Message with attached file: ${attachedFile.fileName}` : "Type your message here..."}
+              disabled={isLoading}
+              className="resize-none min-h-[44px] bg-background border-0 p-3 rounded-xl shadow-none focus-visible:ring-0"
+              rows={1}
+            />
+            {attachedFile && (
+              <div className="absolute left-3 bottom-full mb-2">
+                <div className="bg-muted text-muted-foreground text-xs px-2 py-1 rounded-md flex items-center">
+                  <span className="mr-1">📎</span>
+                  {attachedFile.fileName}
+                  <button 
+                    className="ml-2 text-destructive hover:text-destructive/80"
+                    onClick={() => setAttachedFile(null)}
+                  >
+                    ✕
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
           <div className="flex justify-between items-center p-3">
             <div>
               <Image

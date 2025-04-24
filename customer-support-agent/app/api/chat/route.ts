@@ -213,10 +213,76 @@ export async function POST(req: Request) {
     console.log(`🚀 Query Processing`);
     measureTime("Claude Generation Start");
 
-    const anthropicMessages = messages.map((msg: any) => ({
+    // Convert messages for Anthropic
+    let anthropicMessages = messages.map((msg: any) => ({
       role: msg.role,
       content: msg.content,
     }));
+
+    // Handle file attachment if present
+    const lastMessage = messages[messages.length - 1];
+    if (lastMessage.fileData) {
+      const { base64, mediaType, fileName, isText } = lastMessage.fileData;
+      
+      if (isText) {
+        // For text files, include the content as text
+        try {
+          const textContent = decodeURIComponent(escape(atob(base64)));
+          anthropicMessages[anthropicMessages.length - 1] = {
+            role: "user",
+            content: [
+              {
+                type: "text",
+                text: `File contents of ${fileName}:\n\n${textContent}`,
+              },
+              {
+                type: "text",
+                text: lastMessage.content,
+              }
+            ]
+          };
+        } catch (error) {
+          console.error("Error processing text file:", error);
+        }
+      } else if (mediaType.startsWith("image/")) {
+        // For images, use the multimodal capability
+        anthropicMessages[anthropicMessages.length - 1] = {
+          role: "user",
+          content: [
+            {
+              type: "image",
+              source: {
+                type: "base64",
+                media_type: mediaType,
+                data: base64,
+              }
+            },
+            {
+              type: "text",
+              text: lastMessage.content
+            }
+          ]
+        };
+      } else if (mediaType === "application/pdf") {
+        // For PDFs, we've already extracted text via readFileAsPDFText
+        if (isText) {
+          const textContent = decodeURIComponent(escape(atob(base64)));
+          anthropicMessages[anthropicMessages.length - 1] = {
+            role: "user",
+            content: [
+              {
+                type: "text",
+                text: `PDF contents of ${fileName}:\n\n${textContent}`,
+              },
+              {
+                type: "text",
+                text: lastMessage.content,
+              }
+            ]
+          };
+        }
+      }
+    }
 
     anthropicMessages.push({
       role: "assistant",

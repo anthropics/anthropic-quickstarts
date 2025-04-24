@@ -10,6 +10,9 @@ const LeftSidebar = dynamic(() => import("@/components/LeftSidebar"), {
 const RightSidebar = dynamic(() => import("@/components/RightSidebar"), {
   ssr: false,
 });
+const FileSidebar = dynamic(() => import("@/components/FileSidebar"), {
+  ssr: false,
+});
 
 export default function Home() {
   return (
@@ -17,6 +20,7 @@ export default function Home() {
       <TopNavBar />
       <div className="flex flex-1 overflow-hidden h-screen w-full">
         {config.includeLeftSidebar && <LeftSidebar />}
+        {config.includeFileSidebar && <FileSidebar />}
         <ChatArea />
         {config.includeRightSidebar && <RightSidebar />}
       </div>
