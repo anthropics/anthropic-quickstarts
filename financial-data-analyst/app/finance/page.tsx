@@ -35,57 +35,25 @@ import {
 } from "@/components/ui/dropdown-menu";
 import type { ChartData } from "@/types/chart";
 import TopNavBar from "@/components/TopNavBar";
+import LeftNavBar from "@/components/LeftNavBar";
 import {
   readFileAsText,
   readFileAsBase64,
   readFileAsPDFText,
 } from "@/utils/fileHandling";
-
-// Types
-interface Message {
-  id: string;
-  role: string;
-  content: string;
-  hasToolUse?: boolean;
-  file?: {
-    base64: string;
-    fileName: string;
-    mediaType: string;
-    isText?: boolean;
-  };
-  chartData?: ChartData;
-}
-
-type Model = {
-  id: string;
-  name: string;
-};
-
-interface FileUpload {
-  base64: string;
-  fileName: string;
-  mediaType: string;
-  isText?: boolean;
-  fileSize?: number;
-}
+import type { Message, FileUpload, Model, APIResponse } from "@/types/chat";
+import { 
+  ChatSession,
+  saveChat, 
+  getAllChats, 
+  getChatById, 
+  createNewChat
+} from "@/utils/chatStorage";
 
 const models: Model[] = [
   { id: "claude-3-haiku-20240307", name: "Claude 3 Haiku" },
   { id: "claude-3-5-sonnet-20240620", name: "Claude 3.5 Sonnet" },
 ];
-
-// Updated APIResponse interface
-interface APIResponse {
-  content: string;
-  hasToolUse: boolean;
-  toolUse?: {
-    type: "tool_use";
-    id: string;
-    name: string;
-    input: ChartData;
-  };
-  chartData?: ChartData;
-}
 
 interface MessageComponentProps {
   message: Message;
@@ -111,7 +79,6 @@ const SafeChartRenderer: React.FC<{ data: ChartData }> = ({ data }) => {
 };
 
 const MessageComponent: React.FC<MessageComponentProps> = ({ message }) => {
-  console.log("Message with chart data:", message); // Add this line for debugging
   return (
     <div className="flex items-start gap-2">
       {message.role === "assistant" && (
@@ -194,6 +161,11 @@ const ChartPagination = ({
 );
 
 export default function AIChat() {
+  // Chat session state
+  const [currentChatId, setCurrentChatId] = useState<string | null>(null);
+  const [navbarExpanded, setNavbarExpanded] = useState(true);
+  
+  // Chat UI state
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -208,6 +180,120 @@ export default function AIChat() {
   const [currentChartIndex, setCurrentChartIndex] = useState(0);
   const contentRef = useRef<HTMLDivElement>(null);
   const [isScrollLocked, setIsScrollLocked] = useState(false);
+
+  // Initialize on component mount
+  useEffect(() => {
+    // Try to load existing chats
+    const savedChats = getAllChats();
+    
+    if (savedChats.length > 0) {
+      // Load the most recent chat
+      const mostRecentChat = savedChats.sort((a, b) => 
+        new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
+      )[0];
+      
+      setCurrentChatId(mostRecentChat.id);
+      setMessages(mostRecentChat.messages);
+      setSelectedModel(mostRecentChat.model);
+    } else {
+      // Create a new chat session
+      const newChat = createNewChat(selectedModel);
+      setCurrentChatId(newChat.id);
+    }
+  }, []);
+  
+  // Save chat whenever messages change
+  useEffect(() => {
+    if (currentChatId) {
+      // Get existing chat to preserve creation date
+      const existingChat = getChatById(currentChatId);
+      const createdAt = existingChat?.createdAt || new Date().toISOString();
+      
+      // Generate chat title from first user message
+      const firstUserMessage = messages.find(m => m.role === "user");
+      let chatTitle = "New Chat";
+      
+      if (firstUserMessage) {
+        const content = firstUserMessage.content;
+        // Get the first line for a cleaner title
+        const firstLine = content.split('\n')[0].trim();
+        
+        // If there's a file attached, try to use that in the title
+        if (firstUserMessage.file) {
+          const fileName = firstUserMessage.file.fileName.split('.')[0];
+          
+          if (firstLine.length < 10) {
+            chatTitle = `Analysis of ${fileName}`;
+          } else {
+            // Create a more meaningful title by taking more context (up to 40 chars)
+            const preview = firstLine.substring(0, 40).trim();
+            chatTitle = preview.length < firstLine.length ? `${preview}...` : preview;
+          }
+        } else {
+          // Standard title from content
+          const preview = firstLine.substring(0, 40).trim();
+          chatTitle = preview.length < firstLine.length ? `${preview}...` : preview;
+        }
+      } else if (messages.some(m => m.chartData)) {
+        // If we have charts but no user message (unlikely), use a default chart title
+        chatTitle = "Chart Analysis";
+      }
+      
+      const chatToSave: ChatSession = {
+        id: currentChatId,
+        title: chatTitle,
+        messages,
+        createdAt: createdAt,
+        updatedAt: new Date().toISOString(),
+        model: selectedModel
+      };
+      
+      // Save the chat to localStorage
+      saveChat(chatToSave);
+      
+      // Dispatch an event to notify about the update (helps with immediate UI update)
+      window.dispatchEvent(new StorageEvent('storage', {
+        key: 'financial-analyst-chats'
+      }));
+    }
+  }, [messages, currentChatId, selectedModel]);
+
+  // Handle chat selection
+  const handleSelectChat = (chatId: string) => {
+    const selectedChat = getChatById(chatId);
+    if (selectedChat) {
+      setCurrentChatId(chatId);
+      setMessages(selectedChat.messages);
+      setSelectedModel(selectedChat.model);
+      setCurrentUpload(null);
+      setInput("");
+    }
+  };
+  
+  // Create new chat
+  const handleNewChat = () => {
+    // Create a new chat session
+    const newChat = createNewChat(selectedModel);
+    
+    // Update state with the new chat
+    setCurrentChatId(newChat.id);
+    setMessages([]);
+    setCurrentUpload(null);
+    setInput("");
+    
+    // Force a refresh by dispatching a storage event
+    // This ensures the left navbar will update immediately
+    window.dispatchEvent(new StorageEvent('storage', {
+      key: 'financial-analyst-chats'
+    }));
+    
+    // Immediately save the empty chat to ensure it appears in history
+    saveChat({
+      ...newChat,
+      messages: [],
+      updatedAt: new Date().toISOString()
+    });
+  };
 
   useEffect(() => {
     const scrollToBottom = () => {
@@ -512,6 +598,20 @@ export default function AIChat() {
     textarea.style.height = `${Math.min(textarea.scrollHeight, 300)}px`;
   };
 
+  // Handler for model change
+  const handleModelChange = (modelId: string) => {
+    setSelectedModel(modelId);
+    
+    // If this is an existing chat, update the model
+    if (currentChatId) {
+      const currentChat = getChatById(currentChatId);
+      if (currentChat) {
+        currentChat.model = modelId;
+        saveChat(currentChat);
+      }
+    }
+  };
+
   return (
     <div className="flex flex-col h-screen">
       <TopNavBar
@@ -522,217 +622,230 @@ export default function AIChat() {
         }}
       />
 
-      <div className="flex-1 flex bg-background p-4 pt-0 gap-4 h-[calc(100vh-4rem)]">
-        {/* Chat Sidebar */}
-        <Card className="w-1/3 flex flex-col h-full">
-          <CardHeader className="py-3 px-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-3">
-                {messages.length > 0 && (
-                  <>
-                    <Avatar className="w-8 h-8 border">
-                      <AvatarImage
-                        src="/ant-logo.svg"
-                        alt="AI Assistant Avatar"
-                      />
-                      <AvatarFallback>AI</AvatarFallback>
-                    </Avatar>
-                    <div>
-                      <CardTitle className="text-lg">
-                        Financial Assistant
-                      </CardTitle>
-                      <CardDescription className="text-xs">
-                        Powered by Claude
-                      </CardDescription>
-                    </div>
-                  </>
-                )}
-              </div>
-
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="outline" className="h-8 text-sm">
-                    {models.find((m) => m.id === selectedModel)?.name}
-                    <ChevronDown className="ml-2 h-4 w-4" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent>
-                  {models.map((model) => (
-                    <DropdownMenuItem
-                      key={model.id}
-                      onSelect={() => setSelectedModel(model.id)}
-                    >
-                      {model.name}
-                    </DropdownMenuItem>
-                  ))}
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </div>
-          </CardHeader>
-
-          <CardContent className="flex-1 overflow-y-auto p-4 scroll-smooth snap-y snap-mandatory">
-            {messages.length === 0 ? (
-              <div className="flex flex-col items-center justify-center h-full animate-fade-in-up max-w-[95%] mx-auto">
-                <Avatar className="w-10 h-10 mb-4 border">
-                  <AvatarImage
-                    src="/ant-logo.svg"
-                    alt="AI Assistant Avatar"
-                    width={40}
-                    height={40}
-                  />
-                </Avatar>
-                <h2 className="text-xl font-semibold mb-2">
-                  Financial Assistant
-                </h2>
-                <div className="space-y-4 text-base">
-                  <div className="flex items-center gap-3">
-                    <ChartArea className="text-muted-foreground w-6 h-6" />
-                    <p className="text-muted-foreground">
-                      I can analyze financial data and create visualizations
-                      from your files.
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <FileInput className="text-muted-foreground w-6 h-6" />
-                    <p className="text-muted-foreground">
-                      Upload CSVs, PDFs, or images and I&apos;ll help you
-                      understand the data.
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <MessageCircleQuestion className="text-muted-foreground w-6 h-6" />
-                    <p className="text-muted-foreground">
-                      Ask questions about your financial data and I&apos;ll
-                      create insightful charts.
-                    </p>
-                  </div>
-                </div>
-              </div>
-            ) : (
-              <div className="space-y-4 min-h-full">
-                {messages.map((message) => (
-                  <div
-                    key={message.id}
-                    className={`animate-fade-in-up ${
-                      message.content === "thinking" ? "animate-pulse" : ""
-                    }`}
-                  >
-                    <MessageComponent message={message} />
-                  </div>
-                ))}
-                <div ref={messagesEndRef} className="h-4" />{" "}
-                {/* Add height to ensure scroll space */}
-              </div>
-            )}
-          </CardContent>
-
-          <CardFooter className="p-4 border-t">
-            <form onSubmit={handleSubmit} className="w-full">
-              <div className="flex flex-col space-y-2">
-                {currentUpload && (
-                  <FilePreview
-                    file={currentUpload}
-                    onRemove={() => setCurrentUpload(null)}
-                  />
-                )}
-                <div className="flex items-end space-x-2">
-                  <div className="flex-1 relative">
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => fileInputRef.current?.click()}
-                      disabled={isLoading || isUploading}
-                      className="absolute left-2 top-1/2 -translate-y-1/2 h-8 w-8"
-                    >
-                      <Paperclip className="h-5 w-5" />
-                    </Button>
-                    <Textarea
-                      value={input}
-                      onChange={handleInputChange}
-                      onKeyDown={handleKeyDown}
-                      placeholder="Type your message..."
-                      disabled={isLoading}
-                      className="min-h-[44px] h-[44px] resize-none pl-12 py-3 flex items-center"
-                      rows={1}
-                    />
-                  </div>
-                  <Button
-                    type="submit"
-                    disabled={isLoading || (!input.trim() && !currentUpload)}
-                    className="h-[44px]"
-                  >
-                    <Send className="h-4 w-4" />
-                  </Button>
-                </div>
-              </div>
-              <input
-                type="file"
-                ref={fileInputRef}
-                className="hidden"
-                onChange={handleFileSelect}
-              />
-            </form>
-          </CardFooter>
-        </Card>
-
-        {/* Content Area */}
-        <Card className="flex-1 flex flex-col h-full overflow-hidden">
-          {messages.some((m) => m.chartData) && (
-            <CardHeader className="py-3 px-4 shrink-0">
-              <CardTitle className="text-lg">
-                Analysis & Visualizations
-              </CardTitle>
-            </CardHeader>
-          )}
-          <CardContent
-            ref={contentRef}
-            className="flex-1 overflow-y-auto min-h-0 snap-y snap-mandatory"
-            onScroll={handleChartScroll}
-          >
-            {messages.some((m) => m.chartData) ? (
-              <div className="min-h-full flex flex-col">
-                {messages.map(
-                  (message, index) =>
-                    message.chartData && (
-                      <div
-                        key={`chart-${index}`}
-                        className="w-full min-h-full flex-shrink-0 snap-start snap-always"
-                        ref={
-                          index ===
-                          messages.filter((m) => m.chartData).length - 1
-                            ? chartEndRef
-                            : null
-                        }
-                      >
-                        <SafeChartRenderer data={message.chartData} />
+      <div className="flex flex-1 bg-background h-[calc(100vh-4rem)]">
+        {/* Left Navigation */}
+        <LeftNavBar 
+          currentChatId={currentChatId}
+          expanded={navbarExpanded}
+          onToggleExpand={() => setNavbarExpanded(!navbarExpanded)}
+          onSelectChat={handleSelectChat}
+          onNewChat={handleNewChat}
+          selectedModel={selectedModel}
+        />
+        
+        {/* Main Content */}
+        <div className="flex-1 flex p-4 gap-4">
+          {/* Chat Area */}
+          <Card className={`${navbarExpanded ? 'w-1/3' : 'w-[40%]'} flex flex-col h-full`}>
+            <CardHeader className="py-3 px-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-3">
+                  {messages.length > 0 && (
+                    <>
+                      <Avatar className="w-8 h-8 border">
+                        <AvatarImage
+                          src="/ant-logo.svg"
+                          alt="AI Assistant Avatar"
+                        />
+                        <AvatarFallback>AI</AvatarFallback>
+                      </Avatar>
+                      <div>
+                        <CardTitle className="text-lg">
+                          Financial Assistant
+                        </CardTitle>
+                        <CardDescription className="text-xs">
+                          Powered by Claude
+                        </CardDescription>
                       </div>
-                    ),
-                )}
+                    </>
+                  )}
+                </div>
+
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="outline" className="h-8 text-sm">
+                      {models.find((m) => m.id === selectedModel)?.name}
+                      <ChevronDown className="ml-2 h-4 w-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent>
+                    {models.map((model) => (
+                      <DropdownMenuItem
+                        key={model.id}
+                        onSelect={() => handleModelChange(model.id)}
+                      >
+                        {model.name}
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
               </div>
-            ) : (
-              <div className="h-full flex flex-col items-center justify-center text-center">
-                <div className="flex flex-col items-center justify-center gap-4 -translate-y-8">
-                  <ChartColumnBig className="w-8 h-8 text-muted-foreground" />
-                  <div className="space-y-2">
-                    <CardTitle className="text-lg">
-                      Analysis & Visualizations
-                    </CardTitle>
-                    <CardDescription className="text-base">
-                      Charts and detailed analysis will appear here as you chat
-                    </CardDescription>
-                    <div className="flex flex-wrap justify-center gap-2 mt-4">
-                      <Badge variant="outline">Bar Charts</Badge>
-                      <Badge variant="outline">Area Charts</Badge>
-                      <Badge variant="outline">Linear Charts</Badge>
-                      <Badge variant="outline">Pie Charts</Badge>
+            </CardHeader>
+
+            <CardContent className="flex-1 overflow-y-auto p-4 scroll-smooth snap-y snap-mandatory">
+              {messages.length === 0 ? (
+                <div className="flex flex-col items-center justify-center h-full animate-fade-in-up max-w-[95%] mx-auto">
+                  <Avatar className="w-10 h-10 mb-4 border">
+                    <AvatarImage
+                      src="/ant-logo.svg"
+                      alt="AI Assistant Avatar"
+                      width={40}
+                      height={40}
+                    />
+                  </Avatar>
+                  <h2 className="text-xl font-semibold mb-2">
+                    Financial Assistant
+                  </h2>
+                  <div className="space-y-4 text-base">
+                    <div className="flex items-center gap-3">
+                      <ChartArea className="text-muted-foreground w-6 h-6" />
+                      <p className="text-muted-foreground">
+                        I can analyze financial data and create visualizations
+                        from your files.
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <FileInput className="text-muted-foreground w-6 h-6" />
+                      <p className="text-muted-foreground">
+                        Upload CSVs, PDFs, or images and I&apos;ll help you
+                        understand the data.
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <MessageCircleQuestion className="text-muted-foreground w-6 h-6" />
+                      <p className="text-muted-foreground">
+                        Ask questions about your financial data and I&apos;ll
+                        create insightful charts.
+                      </p>
                     </div>
                   </div>
                 </div>
-              </div>
+              ) : (
+                <div className="space-y-4 min-h-full">
+                  {messages.map((message) => (
+                    <div
+                      key={message.id}
+                      className={`animate-fade-in-up ${
+                        message.content === "thinking" ? "animate-pulse" : ""
+                      }`}
+                    >
+                      <MessageComponent message={message} />
+                    </div>
+                  ))}
+                  <div ref={messagesEndRef} className="h-4" />{" "}
+                  {/* Add height to ensure scroll space */}
+                </div>
+              )}
+            </CardContent>
+
+            <CardFooter className="p-4 border-t">
+              <form onSubmit={handleSubmit} className="w-full">
+                <div className="flex flex-col space-y-2">
+                  {currentUpload && (
+                    <FilePreview
+                      file={currentUpload}
+                      onRemove={() => setCurrentUpload(null)}
+                    />
+                  )}
+                  <div className="flex items-end space-x-2">
+                    <div className="flex-1 relative">
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => fileInputRef.current?.click()}
+                        disabled={isLoading || isUploading}
+                        className="absolute left-2 top-1/2 -translate-y-1/2 h-8 w-8"
+                      >
+                        <Paperclip className="h-5 w-5" />
+                      </Button>
+                      <Textarea
+                        value={input}
+                        onChange={handleInputChange}
+                        onKeyDown={handleKeyDown}
+                        placeholder="Type your message..."
+                        disabled={isLoading}
+                        className="min-h-[44px] h-[44px] resize-none pl-12 py-3 flex items-center"
+                        rows={1}
+                      />
+                    </div>
+                    <Button
+                      type="submit"
+                      disabled={isLoading || (!input.trim() && !currentUpload)}
+                      className="h-[44px]"
+                    >
+                      <Send className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+                <input
+                  type="file"
+                  ref={fileInputRef}
+                  className="hidden"
+                  onChange={handleFileSelect}
+                />
+              </form>
+            </CardFooter>
+          </Card>
+
+          {/* Visualization Area */}
+          <Card className="flex-1 flex flex-col h-full overflow-hidden">
+            {messages.some((m) => m.chartData) && (
+              <CardHeader className="py-3 px-4 shrink-0">
+                <CardTitle className="text-lg">
+                  Analysis & Visualizations
+                </CardTitle>
+              </CardHeader>
             )}
-          </CardContent>
-        </Card>
+            <CardContent
+              ref={contentRef}
+              className="flex-1 overflow-y-auto min-h-0 snap-y snap-mandatory"
+              onScroll={handleChartScroll}
+            >
+              {messages.some((m) => m.chartData) ? (
+                <div className="min-h-full flex flex-col">
+                  {messages.map(
+                    (message, index) =>
+                      message.chartData && (
+                        <div
+                          key={`chart-${index}`}
+                          className="w-full min-h-full flex-shrink-0 snap-start snap-always"
+                          ref={
+                            index ===
+                            messages.filter((m) => m.chartData).length - 1
+                              ? chartEndRef
+                              : null
+                          }
+                        >
+                          <SafeChartRenderer data={message.chartData} />
+                        </div>
+                      ),
+                  )}
+                </div>
+              ) : (
+                <div className="h-full flex flex-col items-center justify-center text-center">
+                  <div className="flex flex-col items-center justify-center gap-4 -translate-y-8">
+                    <ChartColumnBig className="w-8 h-8 text-muted-foreground" />
+                    <div className="space-y-2">
+                      <CardTitle className="text-lg">
+                        Analysis & Visualizations
+                      </CardTitle>
+                      <CardDescription className="text-base">
+                        Charts and detailed analysis will appear here as you chat
+                      </CardDescription>
+                      <div className="flex flex-wrap justify-center gap-2 mt-4">
+                        <Badge variant="outline">Bar Charts</Badge>
+                        <Badge variant="outline">Area Charts</Badge>
+                        <Badge variant="outline">Linear Charts</Badge>
+                        <Badge variant="outline">Pie Charts</Badge>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
       </div>
       {messages.some((m) => m.chartData) && (
         <ChartPagination
