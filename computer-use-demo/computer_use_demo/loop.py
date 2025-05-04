@@ -277,7 +277,7 @@ def _inject_prompt_caching(
                     {"type": "ephemeral"}
                 )
             else:
-                content[-1].pop("cache_control", None)
+                content[-1].pop("cache_control", None)  # type: ignore
                 # we'll only every have one extra turn per loop
                 break
 
