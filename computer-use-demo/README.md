@@ -1,7 +1,7 @@
 # Anthropic Computer Use Demo
 
 > [!NOTE]
-> Now featuring support for the new Claude 3.7 Sonnet model! Experience enhanced computer use capabilities with our most advanced model yet.
+> Now featuring support for the new Claude Opus 4 model! Released on May 8, 2025, this model brings next-generation capabilities with the updated str_replace_based_edit_tool that replaces the previous str_replace_editor tool. The undo_edit command has been removed in this latest version for a more streamlined experience.
 
 > [!CAUTION]
 > Computer use is a beta feature. Please be aware that computer use poses unique risks that are distinct from standard API features or chat interfaces. These risks are heightened when using computer use to interact with the internet. To minimize risks, consider taking precautions such as:
@@ -18,7 +18,7 @@
 This repository helps you get started with computer use on Claude, with reference implementations of:
 
 - Build files to create a Docker container with all necessary dependencies
-- A computer use agent loop using the Anthropic API, Bedrock, or Vertex to access Claude 3.5 Sonnet and Claude 3.7 Sonnet models
+- A computer use agent loop using the Anthropic API, Bedrock, or Vertex to access Claude 3.5 Sonnet, Claude 3.7 Sonnet, and Claude Opus 4 models
 - Anthropic-defined computer use tools
 - A streamlit app for interacting with the agent loop
 
