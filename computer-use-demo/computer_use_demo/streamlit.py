@@ -32,7 +32,7 @@ from computer_use_demo.loop import (
 from computer_use_demo.tools import ToolResult, ToolVersion
 
 PROVIDER_TO_DEFAULT_MODEL_NAME: dict[APIProvider, str] = {
-    APIProvider.ANTHROPIC: "claude-opus-4@20250508",
+    APIProvider.ANTHROPIC: "claude-sonnet-4-20250514",
     APIProvider.BEDROCK: "anthropic.claude-3-5-sonnet-20241022-v2:0",
     APIProvider.VERTEX: "claude-3-5-sonnet-v2@20241022",
 }
@@ -69,6 +69,8 @@ OPUS_4 = ModelConfig(
 MODEL_TO_MODEL_CONF: dict[str, ModelConfig] = {
     "claude-3-7-sonnet-20250219": SONNET_3_7,
     "claude-opus-4@20250508": OPUS_4,
+    "claude-sonnet-4-20250514": OPUS_4,
+    "claude-opus-4-20250514": OPUS_4,
 }
 
 CONFIG_DIR = PosixPath("~/.anthropic").expanduser()
