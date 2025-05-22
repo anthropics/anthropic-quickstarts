@@ -60,7 +60,7 @@ SONNET_3_7 = ModelConfig(
 )
 
 CLAUDE_4 = ModelConfig(
-    tool_version="computer_use_20250124",
+    tool_version="computer_use_20250429",
     max_output_tokens=128_000,
     default_output_tokens=1024 * 16,
     has_thinking=True,
