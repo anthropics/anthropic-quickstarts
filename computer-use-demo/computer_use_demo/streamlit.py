@@ -59,7 +59,7 @@ SONNET_3_7 = ModelConfig(
     has_thinking=True,
 )
 
-OPUS_4 = ModelConfig(
+CLAUDE_4 = ModelConfig(
     tool_version="computer_use_20250429",
     max_output_tokens=128_000,
     default_output_tokens=1024 * 16,
@@ -68,9 +68,9 @@ OPUS_4 = ModelConfig(
 
 MODEL_TO_MODEL_CONF: dict[str, ModelConfig] = {
     "claude-3-7-sonnet-20250219": SONNET_3_7,
-    "claude-opus-4@20250508": OPUS_4,
-    "claude-sonnet-4-20250514": OPUS_4,
-    "claude-opus-4-20250514": OPUS_4,
+    "claude-opus-4@20250508": CLAUDE_4,
+    "claude-sonnet-4-20250514": CLAUDE_4,
+    "claude-opus-4-20250514": CLAUDE_4,
 }
 
 CONFIG_DIR = PosixPath("~/.anthropic").expanduser()
