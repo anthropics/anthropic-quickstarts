@@ -2,5 +2,8 @@ node_modules/
 .next/
 *.db
 *.db-journal
+*.db-shm
+*.db-wal
+tsconfig.tsbuildinfo
 next-env.d.ts
 .env*.local
