@@ -1,0 +1,6 @@
+node_modules/
+.next/
+*.db
+*.db-journal
+next-env.d.ts
+.env*.local
