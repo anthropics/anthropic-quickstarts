@@ -34,10 +34,17 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             </div>
             <nav className="flex flex-1 flex-col gap-1">
               <NavLink href="/" label="Dashboard" icon="🏠" />
+              <p className="mt-3 mb-1 px-3 text-[10px] font-semibold uppercase tracking-wider text-gray-400">People</p>
               <NavLink href="/employees" label="Employees" icon="👤" />
               <NavLink href="/org-chart" label="Org Chart" icon="🌳" />
+              <p className="mt-3 mb-1 px-3 text-[10px] font-semibold uppercase tracking-wider text-gray-400">Workforce</p>
               <NavLink href="/leave" label="Leave" icon="📅" />
               <NavLink href="/time" label="Time & Attendance" icon="⏱️" />
+              <p className="mt-3 mb-1 px-3 text-[10px] font-semibold uppercase tracking-wider text-gray-400">Talent</p>
+              <NavLink href="/recruitment" label="Recruitment" icon="🎯" />
+              <NavLink href="/onboarding" label="Onboarding" icon="🚀" />
+              <p className="mt-3 mb-1 px-3 text-[10px] font-semibold uppercase tracking-wider text-gray-400">Finance</p>
+              <NavLink href="/payroll" label="Payroll" icon="💰" />
             </nav>
             <div className="mt-auto border-t border-gray-100 pt-3 text-xs text-gray-400">
               HRCore MVP · v0.1
