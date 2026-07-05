@@ -1,6 +1,6 @@
 # HRCore — MVP
 
-Accelerated MVP of the HR platform described in [`../SPECIFICATION.md`](../SPECIFICATION.md), covering **Phase 1** of the [sprint backlog](../SPRINT_BACKLOG.md): Core HR, Leave & Absence, Time & Attendance, and an employee dashboard.
+Accelerated MVP of the HR platform described in [`../SPECIFICATION.md`](../SPECIFICATION.md), covering **Phases 1–3** of the [sprint backlog](../SPRINT_BACKLOG.md): Core HR, Leave, Time & Attendance, Payroll, Recruitment (ATS), Onboarding, Performance, Benefits, and Expenses.
 
 ## Quick start
 
@@ -33,6 +33,12 @@ Useful personas:
 | `/org-chart` | Reporting tree from manager relationships |
 | `/leave` | My leave, balances, requests; `/leave/approvals`, `/leave/calendar`, `/leave/admin` |
 | `/time` | Clock in/out, weekly timesheet, submission; `/time/team` for managers |
+| `/payroll` | Pay runs with ZA PAYE engine, payslips; `/payroll/my-payslips` self-service |
+| `/recruitment` | Job postings, kanban pipeline, interviews, offers, candidate directory |
+| `/onboarding` | Checklists with progress tracking, templates; `/onboarding/me` for new hires |
+| `/performance` | Goals & OKRs, review cycles (self + manager), 1-on-1s; `/performance/cycles` (HR) |
+| `/benefits` | Self-enrolment, plan/tier admin, enrolments, employer cost report |
+| `/expenses` | Claims with monthly-limit validation, approvals, reimbursement, category admin |
 
 ## Stack
 
