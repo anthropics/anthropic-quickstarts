@@ -236,3 +236,109 @@ export interface OnboardingTask {
   notes: string | null;
   order_index: number;
 }
+
+// ── Phase 3: Performance ─────────────────────────────────────────────────────
+
+export interface Goal {
+  id: number;
+  employee_id: number;
+  title: string;
+  description: string | null;
+  type: "individual" | "team" | "company";
+  metric_type: "percentage" | "number" | "boolean";
+  target_value: number;
+  current_value: number;
+  due_date: string | null;
+  status: "not_started" | "in_progress" | "at_risk" | "achieved" | "missed";
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ReviewCycle {
+  id: number;
+  name: string;
+  type: "annual" | "biannual" | "quarterly" | "probation";
+  period_start: string;
+  period_end: string;
+  status: "setup" | "active" | "closed";
+}
+
+export interface Review {
+  id: number;
+  cycle_id: number;
+  employee_id: number;
+  reviewer_id: number;
+  type: "self" | "manager";
+  status: "pending" | "in_progress" | "submitted" | "acknowledged";
+  strengths: string | null;
+  improvements: string | null;
+  overall_comments: string | null;
+  rating: number | null;
+  submitted_at: string | null;
+}
+
+export interface OneOnOne {
+  id: number;
+  manager_id: number;
+  employee_id: number;
+  scheduled_at: string;
+  agenda: string | null;
+  notes: string | null;
+  action_items: string; // JSON [{text, done}]
+  status: "scheduled" | "completed" | "cancelled";
+  created_at: string;
+}
+
+// ── Phase 3: Benefits ────────────────────────────────────────────────────────
+
+export interface BenefitPlan {
+  id: number;
+  name: string;
+  category: "medical" | "retirement" | "life" | "disability" | "wellness";
+  provider: string | null;
+  description: string | null;
+  active: number;
+}
+
+export interface BenefitTier {
+  id: number;
+  plan_id: number;
+  name: string;
+  monthly_cost_employee: number;
+  monthly_cost_employer: number;
+  description: string | null;
+}
+
+export interface BenefitElection {
+  id: number;
+  employee_id: number;
+  tier_id: number;
+  status: "active" | "pending" | "ended";
+  effective_from: string;
+  ended_at: string | null;
+}
+
+// ── Phase 3: Expenses ────────────────────────────────────────────────────────
+
+export interface ExpenseCategory {
+  id: number;
+  name: string;
+  code: string;
+  monthly_limit: number | null;
+  requires_receipt: number;
+}
+
+export interface ExpenseClaim {
+  id: number;
+  employee_id: number;
+  category_id: number;
+  amount: number;
+  expense_date: string;
+  description: string;
+  receipt_filename: string | null;
+  status: "pending" | "approved" | "rejected" | "reimbursed";
+  approver_id: number | null;
+  decided_at: string | null;
+  decision_note: string | null;
+  created_at: string;
+}

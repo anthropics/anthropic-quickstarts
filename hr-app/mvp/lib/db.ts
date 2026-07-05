@@ -11,6 +11,7 @@ export function getDb(): Database.Database {
   migrate(db);
   seed(db);
   seedPhase2(db);
+  seedPhase3(db);
   return db;
 }
 
@@ -291,6 +292,114 @@ function migrate(db: Database.Database) {
     completed_at TEXT,
     notes TEXT,
     order_index INTEGER NOT NULL DEFAULT 0
+  );
+
+  -- ── Phase 3: Performance Management ────────────────────────────────────────
+
+  CREATE TABLE IF NOT EXISTS goals (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    employee_id INTEGER NOT NULL REFERENCES employees(id),
+    title TEXT NOT NULL,
+    description TEXT,
+    type TEXT NOT NULL DEFAULT 'individual',   -- individual | team | company
+    metric_type TEXT NOT NULL DEFAULT 'percentage',  -- percentage | number | boolean
+    target_value REAL NOT NULL DEFAULT 100,
+    current_value REAL NOT NULL DEFAULT 0,
+    due_date TEXT,
+    status TEXT NOT NULL DEFAULT 'in_progress',  -- not_started | in_progress | at_risk | achieved | missed
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+  );
+
+  CREATE TABLE IF NOT EXISTS review_cycles (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    type TEXT NOT NULL DEFAULT 'annual',  -- annual | biannual | quarterly | probation
+    period_start TEXT NOT NULL,
+    period_end TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'setup'  -- setup | active | closed
+  );
+
+  CREATE TABLE IF NOT EXISTS reviews (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    cycle_id INTEGER NOT NULL REFERENCES review_cycles(id),
+    employee_id INTEGER NOT NULL REFERENCES employees(id),
+    reviewer_id INTEGER NOT NULL REFERENCES employees(id),
+    type TEXT NOT NULL DEFAULT 'manager',   -- self | manager
+    status TEXT NOT NULL DEFAULT 'pending', -- pending | in_progress | submitted | acknowledged
+    strengths TEXT,
+    improvements TEXT,
+    overall_comments TEXT,
+    rating INTEGER,                          -- 1-5
+    submitted_at TEXT,
+    UNIQUE(cycle_id, employee_id, type)
+  );
+
+  CREATE TABLE IF NOT EXISTS one_on_ones (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    manager_id INTEGER NOT NULL REFERENCES employees(id),
+    employee_id INTEGER NOT NULL REFERENCES employees(id),
+    scheduled_at TEXT NOT NULL,
+    agenda TEXT,
+    notes TEXT,
+    action_items TEXT NOT NULL DEFAULT '[]',  -- JSON: [{text, done}]
+    status TEXT NOT NULL DEFAULT 'scheduled', -- scheduled | completed | cancelled
+    created_at TEXT NOT NULL DEFAULT (datetime('now'))
+  );
+
+  -- ── Phase 3: Benefits Administration ───────────────────────────────────────
+
+  CREATE TABLE IF NOT EXISTS benefit_plans (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    category TEXT NOT NULL DEFAULT 'medical',  -- medical | retirement | life | disability | wellness
+    provider TEXT,
+    description TEXT,
+    active INTEGER NOT NULL DEFAULT 1
+  );
+
+  CREATE TABLE IF NOT EXISTS benefit_tiers (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    plan_id INTEGER NOT NULL REFERENCES benefit_plans(id),
+    name TEXT NOT NULL,
+    monthly_cost_employee REAL NOT NULL DEFAULT 0,
+    monthly_cost_employer REAL NOT NULL DEFAULT 0,
+    description TEXT
+  );
+
+  CREATE TABLE IF NOT EXISTS benefit_elections (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    employee_id INTEGER NOT NULL REFERENCES employees(id),
+    tier_id INTEGER NOT NULL REFERENCES benefit_tiers(id),
+    status TEXT NOT NULL DEFAULT 'active',  -- active | pending | ended
+    effective_from TEXT NOT NULL DEFAULT (date('now')),
+    ended_at TEXT,
+    UNIQUE(employee_id, tier_id)
+  );
+
+  -- ── Phase 3: Expense Management ────────────────────────────────────────────
+
+  CREATE TABLE IF NOT EXISTS expense_categories (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    code TEXT NOT NULL UNIQUE,
+    monthly_limit REAL,             -- null = no limit
+    requires_receipt INTEGER NOT NULL DEFAULT 1
+  );
+
+  CREATE TABLE IF NOT EXISTS expense_claims (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    employee_id INTEGER NOT NULL REFERENCES employees(id),
+    category_id INTEGER NOT NULL REFERENCES expense_categories(id),
+    amount REAL NOT NULL,
+    expense_date TEXT NOT NULL,
+    description TEXT NOT NULL,
+    receipt_filename TEXT,
+    status TEXT NOT NULL DEFAULT 'pending',  -- pending | approved | rejected | reimbursed
+    approver_id INTEGER REFERENCES employees(id),
+    decided_at TEXT,
+    decision_note TEXT,
+    created_at TEXT NOT NULL DEFAULT (datetime('now'))
   );
   `);
 }
@@ -599,6 +708,108 @@ function seedPhase2(db: Database.Database) {
       statuses[i], completedDates[i], t.order_index
     );
   }
+}
+
+function seedPhase3(db: Database.Database) {
+  const alreadySeeded = (db.prepare("SELECT COUNT(*) AS n FROM benefit_plans").get() as { n: number }).n > 0;
+  if (alreadySeeded) return;
+
+  // ── Goals ─────────────────────────────────────────────────────────────────
+  const insertGoal = db.prepare(`
+    INSERT INTO goals (employee_id, title, description, type, metric_type, target_value, current_value, due_date, status)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`);
+  insertGoal.run(1, "Reach R25m ARR", "Company-level revenue target for FY2026", "company", "number", 25000000, 16500000, "2026-12-31", "in_progress");
+  insertGoal.run(2, "Ship platform v2 architecture", "Migrate all services to the new event-driven architecture", "team", "percentage", 100, 65, "2026-09-30", "in_progress");
+  insertGoal.run(6, "Reduce API p95 latency to 150ms", "Optimise hot paths and add caching", "individual", "number", 150, 210, "2026-08-31", "at_risk");
+  insertGoal.run(7, "Complete AWS Solutions Architect cert", "Professional development goal", "individual", "boolean", 1, 0, "2026-10-31", "in_progress");
+  insertGoal.run(9, "Onboard to frontend codebase", "Ship 10 PRs to the design system", "individual", "number", 10, 7, "2026-07-31", "in_progress");
+  insertGoal.run(10, "Close R4m in new business", "FY2026 individual sales quota", "individual", "number", 4000000, 2900000, "2026-12-31", "in_progress");
+
+  // ── Review cycle (active H1 2026) ────────────────────────────────────────
+  const cycle = db.prepare(`
+    INSERT INTO review_cycles (name, type, period_start, period_end, status)
+    VALUES ('H1 2026 Performance Review', 'biannual', '2026-01-01', '2026-06-30', 'active')`).run();
+
+  const insertReview = db.prepare(`
+    INSERT INTO reviews (cycle_id, employee_id, reviewer_id, type, status, strengths, improvements, overall_comments, rating, submitted_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`);
+  // Sipho: self submitted, manager in progress
+  insertReview.run(cycle.lastInsertRowid, 6, 6, "self", "submitted",
+    "Led the payment-service refactor solo; mentored two juniors weekly.",
+    "Want to get better at estimating larger projects.",
+    "Strong half — delivered every committed feature.", 4, "2026-06-10 09:00:00");
+  insertReview.run(cycle.lastInsertRowid, 6, 2, "manager", "in_progress", null, null, null, null, null);
+  // Aisha: both pending
+  insertReview.run(cycle.lastInsertRowid, 7, 7, "self", "pending", null, null, null, null, null);
+  insertReview.run(cycle.lastInsertRowid, 7, 2, "manager", "pending", null, null, null, null, null);
+  // Pieter: both submitted
+  insertReview.run(cycle.lastInsertRowid, 10, 10, "self", "submitted",
+    "Exceeded quota two quarters running; built the enterprise playbook.",
+    "Pipeline hygiene in the CRM.", "Great half overall.", 4, "2026-06-08 14:00:00");
+  insertReview.run(cycle.lastInsertRowid, 10, 3, "manager", "submitted",
+    "Consistent top performer, excellent client relationships.",
+    "Needs to document deals better for handover.",
+    "Promotion-track performance. Recommend for senior AE next cycle.", 5, "2026-06-12 11:00:00");
+
+  // ── 1-on-1s ───────────────────────────────────────────────────────────────
+  const insert11 = db.prepare(`
+    INSERT INTO one_on_ones (manager_id, employee_id, scheduled_at, agenda, notes, action_items, status)
+    VALUES (?, ?, ?, ?, ?, ?, ?)`);
+  insert11.run(2, 6, "2026-06-17 10:00:00", "Latency goal progress; review cycle check-in", null,
+    JSON.stringify([{ text: "Share profiling results", done: false }]), "scheduled");
+  insert11.run(2, 9, "2026-06-11 14:00:00", "Onboarding progress; first-quarter feedback",
+    "Zanele is ramping well; pair her with Sipho on the API project next sprint.",
+    JSON.stringify([{ text: "Set up pairing sessions with Sipho", done: true }, { text: "Add Zanele to on-call rotation from July", done: false }]), "completed");
+  insert11.run(3, 10, "2026-06-18 09:00:00", "Q3 pipeline review", null, "[]", "scheduled");
+
+  // ── Benefit plans & tiers ─────────────────────────────────────────────────
+  const insertPlan = db.prepare("INSERT INTO benefit_plans (name, category, provider, description) VALUES (?, ?, ?, ?)");
+  const insertTier = db.prepare("INSERT INTO benefit_tiers (plan_id, name, monthly_cost_employee, monthly_cost_employer, description) VALUES (?, ?, ?, ?, ?)");
+
+  const medical = insertPlan.run("Discovery Health Medical Aid", "medical", "Discovery Health", "Comprehensive medical aid with hospital and day-to-day cover");
+  const t1 = insertTier.run(medical.lastInsertRowid, "Essential", 900, 900, "Hospital plan only");
+  const t2 = insertTier.run(medical.lastInsertRowid, "Classic", 1800, 1800, "Hospital + day-to-day benefits");
+  insertTier.run(medical.lastInsertRowid, "Comprehensive", 2900, 2900, "Full cover including chronic and dental");
+
+  const pension = insertPlan.run("Allan Gray Provident Fund", "retirement", "Allan Gray", "Provident fund with employer matching up to 7.5%");
+  const p1 = insertTier.run(pension.lastInsertRowid, "Standard (7.5% match)", 0, 0, "7.5% employee contribution matched by employer");
+
+  const life = insertPlan.run("Group Life & Disability", "life", "Old Mutual", "Group life cover at 3x annual salary plus income protection");
+  const l1 = insertTier.run(life.lastInsertRowid, "Standard cover", 0, 350, "Fully employer-funded");
+
+  const wellness = insertPlan.run("Wellness Programme", "wellness", "ICAS", "Confidential counselling and wellness support, gym discount");
+  insertTier.run(wellness.lastInsertRowid, "Standard", 0, 120, "Employer-funded EAP access");
+
+  // ── Elections: everyone on pension + life; a few on medical ─────────────
+  const insertElection = db.prepare("INSERT OR IGNORE INTO benefit_elections (employee_id, tier_id, effective_from) VALUES (?, ?, ?)");
+  const activeEmps = db.prepare("SELECT id, start_date FROM employees WHERE status = 'active'").all() as { id: number; start_date: string }[];
+  for (const e of activeEmps) {
+    insertElection.run(e.id, p1.lastInsertRowid, e.start_date);
+    insertElection.run(e.id, l1.lastInsertRowid, e.start_date);
+  }
+  insertElection.run(1, t2.lastInsertRowid, "2020-02-01");
+  insertElection.run(2, t2.lastInsertRowid, "2020-04-01");
+  insertElection.run(4, t2.lastInsertRowid, "2021-03-01");
+  insertElection.run(6, t1.lastInsertRowid, "2021-09-01");
+  insertElection.run(10, t1.lastInsertRowid, "2022-10-01");
+
+  // ── Expense categories ────────────────────────────────────────────────────
+  const insertCat = db.prepare("INSERT INTO expense_categories (name, code, monthly_limit, requires_receipt) VALUES (?, ?, ?, ?)");
+  const travel = insertCat.run("Travel & Mileage", "TRAVEL", 8000, 1);
+  const meals = insertCat.run("Client Meals & Entertainment", "MEALS", 3000, 1);
+  const equipment = insertCat.run("Equipment & Software", "EQUIP", 5000, 1);
+  const training = insertCat.run("Training & Conferences", "TRAINING", null, 1);
+  insertCat.run("Internet & Phone", "COMMS", 1000, 0);
+
+  // ── Expense claims ────────────────────────────────────────────────────────
+  const insertClaim = db.prepare(`
+    INSERT INTO expense_claims (employee_id, category_id, amount, expense_date, description, receipt_filename, status, approver_id, decided_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`);
+  insertClaim.run(10, travel.lastInsertRowid, 1240.50, "2026-06-03", "Client visit — JHB to PTA return mileage", "receipt_mileage_jun3.pdf", "approved", 3, "2026-06-05 10:00:00");
+  insertClaim.run(10, meals.lastInsertRowid, 860.00, "2026-06-03", "Lunch with Acme Retail procurement team", "receipt_lunch_jun3.pdf", "approved", 3, "2026-06-05 10:01:00");
+  insertClaim.run(6, equipment.lastInsertRowid, 2150.00, "2026-06-10", "Mechanical keyboard and ergonomic mouse", "receipt_takealot.pdf", "pending", 2, null);
+  insertClaim.run(7, training.lastInsertRowid, 4500.00, "2026-06-08", "DevConf 2026 conference ticket", "receipt_devconf.pdf", "pending", 2, null);
+  insertClaim.run(12, meals.lastInsertRowid, 420.00, "2026-05-28", "Team birthday celebration supplies", "receipt_woolies.pdf", "reimbursed", 4, "2026-06-01 09:00:00");
 }
 
 export function logAudit(actorId: number | null, action: string, entity: string, entityId: number | null, detail?: string) {

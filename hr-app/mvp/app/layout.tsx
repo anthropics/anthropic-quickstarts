@@ -43,8 +43,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               <p className="mt-3 mb-1 px-3 text-[10px] font-semibold uppercase tracking-wider text-gray-400">Talent</p>
               <NavLink href="/recruitment" label="Recruitment" icon="🎯" />
               <NavLink href="/onboarding" label="Onboarding" icon="🚀" />
+              <NavLink href="/performance" label="Performance" icon="📊" />
               <p className="mt-3 mb-1 px-3 text-[10px] font-semibold uppercase tracking-wider text-gray-400">Finance</p>
               <NavLink href="/payroll" label="Payroll" icon="💰" />
+              <NavLink href="/expenses" label="Expenses" icon="💸" />
+              <NavLink href="/benefits" label="Benefits" icon="💼" />
             </nav>
             <div className="mt-auto border-t border-gray-100 pt-3 text-xs text-gray-400">
               HRCore MVP · v0.1
