@@ -1,5 +1,6 @@
 import Database from "better-sqlite3";
 import path from "path";
+import { hashPasswordSync } from "./auth";
 
 let db: Database.Database | null = null;
 
@@ -8,15 +9,66 @@ export function getDb(): Database.Database {
   db = new Database(path.join(process.cwd(), "hrcore.db"));
   db.pragma("journal_mode = WAL");
   db.pragma("foreign_keys = ON");
-  migrate(db);
+  runMigrations(db);
   seed(db);
   seedPhase2(db);
   seedPhase3(db);
+  seedWave1(db);
+  startJobTimerOnce();
   return db;
 }
 
-function migrate(db: Database.Database) {
-  db.exec(`
+/**
+ * In-process hourly scheduler, started lazily on first DB access (Node runtime
+ * only — this module never reaches the edge bundle). Jobs are idempotent per
+ * period; for multi-instance deployments set DISABLE_JOB_TIMER=1 and drive
+ * POST /api/admin/jobs from external cron instead.
+ */
+declare global {
+  // eslint-disable-next-line no-var
+  var __hrcoreJobTimer: ReturnType<typeof setInterval> | undefined;
+}
+
+function startJobTimerOnce() {
+  if (process.env.DISABLE_JOB_TIMER === "1") return;
+  if (global.__hrcoreJobTimer) return;
+  const run = () =>
+    import("./jobs")
+      .then((m) => m.runDueJobs())
+      .catch((e) => console.error("[jobs] run failed:", e));
+  global.__hrcoreJobTimer = setInterval(run, 60 * 60 * 1000);
+  setTimeout(run, 3000);
+}
+
+/**
+ * Versioned migrations. Each entry runs exactly once, in order, tracked in
+ * schema_migrations. Never edit an applied migration — append a new one.
+ */
+const MIGRATIONS: { version: number; name: string; up: (db: Database.Database) => void }[] = [
+  { version: 1, name: "initial-schema", up: (db) => db.exec(MIGRATION_001) },
+  { version: 2, name: "production-hardening", up: (db) => db.exec(MIGRATION_002) },
+];
+
+function runMigrations(db: Database.Database) {
+  db.exec(`CREATE TABLE IF NOT EXISTS schema_migrations (
+    version INTEGER PRIMARY KEY,
+    name TEXT NOT NULL,
+    applied_at TEXT NOT NULL DEFAULT (datetime('now'))
+  );`);
+  const applied = new Set(
+    (db.prepare("SELECT version FROM schema_migrations").all() as { version: number }[]).map((r) => r.version)
+  );
+  for (const m of MIGRATIONS) {
+    if (applied.has(m.version)) continue;
+    const tx = db.transaction(() => {
+      m.up(db);
+      db.prepare("INSERT INTO schema_migrations (version, name) VALUES (?, ?)").run(m.version, m.name);
+    });
+    tx();
+  }
+}
+
+const MIGRATION_001 = `
   CREATE TABLE IF NOT EXISTS departments (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     name TEXT NOT NULL,
@@ -401,8 +453,159 @@ function migrate(db: Database.Database) {
     decision_note TEXT,
     created_at TEXT NOT NULL DEFAULT (datetime('now'))
   );
-  `);
-}
+`;
+
+const MIGRATION_002 = `
+  -- ── Auth ───────────────────────────────────────────────────────────────────
+  ALTER TABLE employees ADD COLUMN password_hash TEXT;
+  ALTER TABLE employees ADD COLUMN must_change_password INTEGER NOT NULL DEFAULT 0;
+  ALTER TABLE employees ADD COLUMN last_login_at TEXT;
+  ALTER TABLE employees ADD COLUMN token_version INTEGER NOT NULL DEFAULT 1;
+  ALTER TABLE employees ADD COLUMN pin_hash TEXT;              -- kiosk clock-in PIN
+  ALTER TABLE employees ADD COLUMN medical_aid_members INTEGER NOT NULL DEFAULT 0;
+
+  CREATE TABLE login_attempts (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    email TEXT NOT NULL,
+    ip TEXT,
+    success INTEGER NOT NULL DEFAULT 0,
+    attempted_at TEXT NOT NULL DEFAULT (datetime('now'))
+  );
+  CREATE INDEX idx_login_attempts_email ON login_attempts(email, attempted_at);
+
+  -- ── Notifications & email outbox ───────────────────────────────────────────
+  CREATE TABLE notifications (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    employee_id INTEGER NOT NULL REFERENCES employees(id),
+    type TEXT NOT NULL,
+    title TEXT NOT NULL,
+    body TEXT,
+    link TEXT,
+    read_at TEXT,
+    created_at TEXT NOT NULL DEFAULT (datetime('now'))
+  );
+  CREATE INDEX idx_notifications_employee ON notifications(employee_id, read_at);
+
+  CREATE TABLE email_outbox (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    to_email TEXT NOT NULL,
+    subject TEXT NOT NULL,
+    body_text TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'pending',  -- pending | sent | failed | skipped
+    error TEXT,
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    sent_at TEXT
+  );
+
+  -- ── File storage ─────────────────────────────────────────────────────────
+  CREATE TABLE files (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    storage_name TEXT NOT NULL UNIQUE,   -- uuid on disk
+    original_name TEXT NOT NULL,
+    mime TEXT NOT NULL,
+    size_bytes INTEGER NOT NULL,
+    uploaded_by INTEGER REFERENCES employees(id),
+    created_at TEXT NOT NULL DEFAULT (datetime('now'))
+  );
+
+  CREATE TABLE employee_documents (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    employee_id INTEGER NOT NULL REFERENCES employees(id),
+    file_id INTEGER NOT NULL REFERENCES files(id),
+    category TEXT NOT NULL DEFAULT 'other',  -- contract | id_document | certificate | policy | other
+    title TEXT NOT NULL,
+    uploaded_by INTEGER REFERENCES employees(id),
+    created_at TEXT NOT NULL DEFAULT (datetime('now'))
+  );
+
+  ALTER TABLE candidates ADD COLUMN cv_file_id INTEGER REFERENCES files(id);
+  ALTER TABLE expense_claims ADD COLUMN receipt_file_id INTEGER REFERENCES files(id);
+  ALTER TABLE job_postings ADD COLUMN public_slug TEXT;
+
+  -- ── HR letters ───────────────────────────────────────────────────────────
+  CREATE TABLE letter_templates (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    type TEXT NOT NULL DEFAULT 'general',  -- appointment | confirmation | warning | increase | general
+    body_template TEXT NOT NULL,           -- {{merge_fields}}
+    created_at TEXT NOT NULL DEFAULT (datetime('now'))
+  );
+
+  CREATE TABLE generated_letters (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    employee_id INTEGER NOT NULL REFERENCES employees(id),
+    template_id INTEGER REFERENCES letter_templates(id),
+    title TEXT NOT NULL,
+    content TEXT NOT NULL,
+    created_by INTEGER REFERENCES employees(id),
+    created_at TEXT NOT NULL DEFAULT (datetime('now'))
+  );
+
+  -- ── Employment history versioning ────────────────────────────────────────
+  CREATE TABLE employment_history (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    employee_id INTEGER NOT NULL REFERENCES employees(id),
+    job_title TEXT NOT NULL,
+    department_id INTEGER REFERENCES departments(id),
+    manager_id INTEGER REFERENCES employees(id),
+    employment_type TEXT NOT NULL,
+    effective_from TEXT NOT NULL,
+    effective_to TEXT,
+    change_reason TEXT,                    -- hired | promotion | transfer | restructure | correction
+    created_at TEXT NOT NULL DEFAULT (datetime('now'))
+  );
+
+  -- ── Leave accruals & carry-over ──────────────────────────────────────────
+  CREATE TABLE leave_accruals (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    employee_id INTEGER NOT NULL REFERENCES employees(id),
+    leave_type_id INTEGER NOT NULL REFERENCES leave_types(id),
+    period TEXT NOT NULL,                  -- YYYY-MM
+    days REAL NOT NULL,
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    UNIQUE(employee_id, leave_type_id, period)
+  );
+
+  CREATE TABLE leave_carry_overs (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    employee_id INTEGER NOT NULL REFERENCES employees(id),
+    leave_type_id INTEGER NOT NULL REFERENCES leave_types(id),
+    year INTEGER NOT NULL,
+    days REAL NOT NULL,
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    UNIQUE(employee_id, leave_type_id, year)
+  );
+
+  ALTER TABLE leave_types ADD COLUMN accrual_method TEXT NOT NULL DEFAULT 'annual';  -- annual | monthly
+  ALTER TABLE leave_types ADD COLUMN max_carry_over_days REAL NOT NULL DEFAULT 0;
+  ALTER TABLE leave_requests ADD COLUMN start_half INTEGER NOT NULL DEFAULT 0;  -- afternoon-only first day
+  ALTER TABLE leave_requests ADD COLUMN end_half INTEGER NOT NULL DEFAULT 0;    -- morning-only last day
+
+  -- ── Manual time entries (timesheet corrections, approval-gated) ──────────
+  CREATE TABLE manual_time_entries (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    employee_id INTEGER NOT NULL REFERENCES employees(id),
+    date TEXT NOT NULL,
+    start_time TEXT NOT NULL,              -- HH:MM
+    end_time TEXT NOT NULL,
+    break_minutes INTEGER NOT NULL DEFAULT 0,
+    reason TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'pending',  -- pending | approved | rejected
+    approver_id INTEGER REFERENCES employees(id),
+    decided_at TEXT,
+    created_at TEXT NOT NULL DEFAULT (datetime('now'))
+  );
+
+  -- ── Background jobs bookkeeping ──────────────────────────────────────────
+  CREATE TABLE job_runs (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    job_name TEXT NOT NULL,
+    period_key TEXT NOT NULL,              -- e.g. 2026-07 or 2026-07-06
+    detail TEXT,
+    ran_at TEXT NOT NULL DEFAULT (datetime('now')),
+    UNIQUE(job_name, period_key)
+  );
+`;
 
 function seed(db: Database.Database) {
   const count = db.prepare("SELECT COUNT(*) AS n FROM employees").get() as { n: number };
@@ -810,6 +1013,67 @@ function seedPhase3(db: Database.Database) {
   insertClaim.run(6, equipment.lastInsertRowid, 2150.00, "2026-06-10", "Mechanical keyboard and ergonomic mouse", "receipt_takealot.pdf", "pending", 2, null);
   insertClaim.run(7, training.lastInsertRowid, 4500.00, "2026-06-08", "DevConf 2026 conference ticket", "receipt_devconf.pdf", "pending", 2, null);
   insertClaim.run(12, meals.lastInsertRowid, 420.00, "2026-05-28", "Team birthday celebration supplies", "receipt_woolies.pdf", "reimbursed", 4, "2026-06-01 09:00:00");
+}
+
+function seedWave1(db: Database.Database) {
+  const needsPasswords = (db.prepare("SELECT COUNT(*) AS n FROM employees WHERE password_hash IS NULL").get() as { n: number }).n > 0;
+  if (needsPasswords) {
+    // Default demo credential — documented in README; must_change_password left
+    // off for demo ergonomics but the change-password flow is fully functional.
+    const hash = hashPasswordSync("Acme#2026");
+    const pinHash = hashPasswordSync("1234");
+    db.prepare("UPDATE employees SET password_hash = ?, pin_hash = ? WHERE password_hash IS NULL").run(hash, pinHash);
+  }
+
+  const hasTemplates = (db.prepare("SELECT COUNT(*) AS n FROM letter_templates").get() as { n: number }).n > 0;
+  if (!hasTemplates) {
+    const ins = db.prepare("INSERT INTO letter_templates (name, type, body_template) VALUES (?, ?, ?)");
+    ins.run("Appointment Letter", "appointment",
+`Dear {{first_name}} {{last_name}},
+
+We are pleased to confirm your appointment as {{job_title}} in the {{department}} department at Acme (Pty) Ltd, effective {{start_date}}.
+
+Your employee number is {{employee_number}}. You will report to {{manager_name}}.
+
+We look forward to working with you.
+
+Sincerely,
+{{author_name}}
+People & Culture, Acme (Pty) Ltd`);
+    ins.run("Confirmation of Employment", "confirmation",
+`TO WHOM IT MAY CONCERN
+
+This letter confirms that {{first_name}} {{last_name}} (employee number {{employee_number}}) is employed by Acme (Pty) Ltd as {{job_title}} in the {{department}} department, since {{start_date}}.
+
+This letter is issued at the employee's request.
+
+Sincerely,
+{{author_name}}
+People & Culture, Acme (Pty) Ltd`);
+    ins.run("Written Warning", "warning",
+`Dear {{first_name}} {{last_name}},
+
+This letter serves as a formal written warning regarding: {{reason}}
+
+Please treat this matter with urgency. A recurrence may lead to further disciplinary action in line with company policy.
+
+Sincerely,
+{{author_name}}
+People & Culture, Acme (Pty) Ltd`);
+  }
+
+  // Backfill employment history from current employment records (one 'hired' row each)
+  const missingHistory = db.prepare(`
+    SELECT e.id, e.job_title, e.department_id, e.manager_id, e.employment_type, e.start_date
+    FROM employees e
+    WHERE NOT EXISTS (SELECT 1 FROM employment_history h WHERE h.employee_id = e.id)
+  `).all() as { id: number; job_title: string; department_id: number | null; manager_id: number | null; employment_type: string; start_date: string }[];
+  const insHist = db.prepare(`
+    INSERT INTO employment_history (employee_id, job_title, department_id, manager_id, employment_type, effective_from, change_reason)
+    VALUES (?, ?, ?, ?, ?, ?, 'hired')`);
+  for (const e of missingHistory) {
+    insHist.run(e.id, e.job_title, e.department_id, e.manager_id, e.employment_type, e.start_date);
+  }
 }
 
 export function logAudit(actorId: number | null, action: string, entity: string, entityId: number | null, detail?: string) {

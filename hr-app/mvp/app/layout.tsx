@@ -1,31 +1,46 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import { getDb } from "@/lib/db";
-import { getCurrentUser } from "@/lib/session";
+import { getSessionUser } from "@/lib/session";
+import { unreadCount } from "@/lib/notify";
 import NavLink from "@/components/NavLink";
-import UserSwitcher from "@/components/UserSwitcher";
+import UserMenu from "@/components/UserMenu";
+import NotificationBell from "@/components/NotificationBell";
+import ImpersonationBanner from "@/components/ImpersonationBanner";
 
 export const metadata: Metadata = {
   title: "HRCore",
-  description: "HR platform MVP — Core HR, Leave, Time & Attendance",
+  description: "HR platform — Core HR, Leave, Time, Payroll, ATS, Onboarding, Performance, Benefits, Expenses",
 };
 
 export const dynamic = "force-dynamic";
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
+  const user = getSessionUser();
+
+  // Public surface (login, careers, kiosk) renders without app chrome;
+  // middleware guarantees protected routes never reach here without a session.
+  if (!user) {
+    return (
+      <html lang="en">
+        <body className="min-h-screen bg-gray-50 text-gray-900 antialiased">{children}</body>
+      </html>
+    );
+  }
+
   const db = getDb();
-  const user = getCurrentUser();
-  const users = (
-    db.prepare("SELECT id, first_name || ' ' || last_name AS name, role FROM employees WHERE status = 'active' ORDER BY id").all() as {
-      id: number;
-      name: string;
-      role: string;
-    }[]
-  );
+  const unread = unreadCount(user.id);
+  const impersonationTargets =
+    user.role === "admin" || user.impersonated_by
+      ? (db.prepare("SELECT id, first_name || ' ' || last_name AS name FROM employees WHERE status = 'active' ORDER BY first_name").all() as { id: number; name: string }[])
+      : [];
 
   return (
     <html lang="en">
       <body className="min-h-screen bg-gray-50 text-gray-900 antialiased">
+        {user.impersonated_by && (
+          <ImpersonationBanner name={`${user.first_name} ${user.last_name}`} />
+        )}
         <div className="flex min-h-screen">
           <aside className="hidden w-60 shrink-0 border-r border-gray-200 bg-white p-4 md:flex md:flex-col">
             <div className="mb-6 flex items-center gap-2 px-2">
@@ -50,20 +65,22 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               <NavLink href="/benefits" label="Benefits" icon="💼" />
             </nav>
             <div className="mt-auto border-t border-gray-100 pt-3 text-xs text-gray-400">
-              HRCore MVP · v0.1
+              HRCore · v1.0
             </div>
           </aside>
 
           <div className="flex min-w-0 flex-1 flex-col">
-            <header className="flex h-14 items-center justify-between border-b border-gray-200 bg-white px-6">
-              <div className="text-sm text-gray-500">
-                Acme (Pty) Ltd
-              </div>
-              <div className="flex items-center gap-3">
-                <span className="hidden text-sm text-gray-600 sm:block">
-                  {user.first_name} {user.last_name} · <span className="capitalize">{user.role}</span>
-                </span>
-                <UserSwitcher users={users} currentId={user.id} />
+            <header className="flex h-14 items-center justify-between border-b border-gray-200 bg-white px-6 print:hidden">
+              <div className="text-sm text-gray-500">Acme (Pty) Ltd</div>
+              <div className="flex items-center gap-2">
+                <NotificationBell initialUnread={unread} />
+                <UserMenu
+                  name={`${user.first_name} ${user.last_name}`}
+                  role={user.role}
+                  isAdmin={user.role === "admin" || user.impersonated_by !== null}
+                  impersonating={user.impersonated_by !== null}
+                  employees={impersonationTargets}
+                />
               </div>
             </header>
             <main className="flex-1 p-6">{children}</main>

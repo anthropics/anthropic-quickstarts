@@ -22,6 +22,9 @@ export interface Employee {
   emergency_contact_name: string | null;
   emergency_contact_phone: string | null;
   address: string | null;
+  must_change_password?: number;
+  last_login_at?: string | null;
+  medical_aid_members?: number;
 }
 
 export interface Department {
