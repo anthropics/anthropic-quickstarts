@@ -1,12 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getDb, logAudit } from "@/lib/db";
-import { getCurrentUser, isHr } from "@/lib/session";
+import { getApiUser, isHr } from "@/lib/session";
 import { calculatePayslip } from "@/app/payroll/_lib/engine";
 
 export const dynamic = "force-dynamic";
 
 export async function POST(req: NextRequest) {
-  const user = getCurrentUser();
+  const user = getApiUser();
+  if (!user) {
+    return NextResponse.json({ error: "Unauthenticated." }, { status: 401 });
+  }
   if (!isHr(user)) {
     return NextResponse.json({ error: "Forbidden: HR/admin only." }, { status: 403 });
   }
@@ -35,7 +38,9 @@ export async function POST(req: NextRequest) {
   const runId = runResult.lastInsertRowid as number;
 
   // Fetch all active employees and their earnings/deductions
-  const employees = db.prepare("SELECT id FROM employees WHERE status = 'active'").all() as { id: number }[];
+  const employees = db
+    .prepare("SELECT id, medical_aid_members FROM employees WHERE status = 'active'")
+    .all() as { id: number; medical_aid_members: number }[];
 
   const insertPayslip = db.prepare(`
     INSERT INTO payslips (payroll_run_id, employee_id, gross_pay, income_tax, uif_employee, total_deductions, net_pay, lines)
@@ -70,7 +75,7 @@ export async function POST(req: NextRequest) {
         override_amount: number | null;
       }[];
 
-      const result = calculatePayslip(earnings, deductions);
+      const result = calculatePayslip(earnings, deductions, emp.medical_aid_members ?? 0);
 
       insertPayslip.run(
         runId,

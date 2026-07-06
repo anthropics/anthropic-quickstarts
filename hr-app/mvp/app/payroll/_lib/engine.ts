@@ -16,13 +16,42 @@ export interface EmployeeDeductionInput {
   override_amount: number | null;
 }
 
+/**
+ * Informational payslip line (e.g. tax credits). Not an earning or deduction —
+ * it does not move gross/net; it explains how a statutory amount was derived.
+ */
+export interface PayslipInfoLine {
+  label: string;
+  amount: number;
+  type: "info";
+}
+
+export type EnginePayslipLine = PayslipLine | PayslipInfoLine;
+
 export interface PayslipResult {
   gross: number;
   incomeTax: number;
   uif: number;
-  lines: PayslipLine[];
+  /** Medical Scheme Fees Tax Credit actually applied against PAYE this month. */
+  medicalTaxCredit: number;
+  lines: EnginePayslipLine[];
   net: number;
   totalDeductions: number;
+}
+
+// SA Medical Scheme Fees Tax Credit, 2026 monthly rates (Rands).
+const MTC_MAIN_MEMBER = 364; // main member
+const MTC_FIRST_DEPENDANT = 364; // first dependant
+const MTC_ADDITIONAL_DEPENDANT = 246; // each additional dependant
+
+/**
+ * Monthly Medical Scheme Fees Tax Credit for a member count.
+ * members: 0 = no medical aid, 1 = main member only, 2 = +1 dependant, etc.
+ */
+export function medicalTaxCreditMonthly(members: number): number {
+  if (!Number.isFinite(members) || members <= 0) return 0;
+  if (members === 1) return MTC_MAIN_MEMBER;
+  return MTC_MAIN_MEMBER + MTC_FIRST_DEPENDANT + (members - 2) * MTC_ADDITIONAL_DEPENDANT;
 }
 
 /**
@@ -32,10 +61,14 @@ export interface PayslipResult {
  * PENSION: 7.5% of gross, pre-tax.
  * MEDICAL: fixed R1 800/month, post-tax.
  * PAYE: graduated on (taxableGross - preTaxDeductions) annualised.
+ * Medical Scheme Fees Tax Credit: R364 main member + R364 first dependant +
+ * R246 per additional dependant per month, applied against PAYE (floor 0),
+ * only when the employee has an active MEDICAL deduction.
  */
 export function calculatePayslip(
   earnings: EmployeeEarningInput[],
-  deductions: EmployeeDeductionInput[]
+  deductions: EmployeeDeductionInput[],
+  medicalAidMembers = 0
 ): PayslipResult {
   const gross = earnings.reduce((s, e) => s + e.amount, 0);
   const taxableGross = earnings.filter((e) => e.taxable).reduce((s, e) => s + e.amount, 0);
@@ -72,10 +105,17 @@ export function calculatePayslip(
   else annualTax = 644489 + (annual - 1817000) * 0.45;
   // Primary rebate 2026
   annualTax = Math.max(0, annualTax - 17235);
-  const incomeTax = Math.round((annualTax / 12) * 100) / 100;
+  const monthlyPayeBeforeCredit = annualTax / 12;
+
+  // Medical Scheme Fees Tax Credit: only when the employee actually belongs to
+  // a medical scheme (active MEDICAL deduction). Cannot push PAYE below 0.
+  const hasMedicalDeduction = deductions.some((d) => d.code === "MEDICAL");
+  const mtc = hasMedicalDeduction ? medicalTaxCreditMonthly(medicalAidMembers) : 0;
+  const medicalTaxCredit = Math.round(Math.min(mtc, monthlyPayeBeforeCredit) * 100) / 100;
+  const incomeTax = Math.round(Math.max(0, monthlyPayeBeforeCredit - mtc) * 100) / 100;
 
   // Build lines
-  const lines: PayslipLine[] = [];
+  const lines: EnginePayslipLine[] = [];
   for (const e of earnings) {
     lines.push({ label: e.name, amount: e.amount, type: "earning" });
   }
@@ -84,10 +124,17 @@ export function calculatePayslip(
   for (const d of nonStatutoryLines) {
     lines.push({ label: d.label, amount: d.amount, type: "deduction" });
   }
+  if (medicalTaxCredit > 0) {
+    lines.push({
+      label: "Medical Scheme Fees Tax Credit (reduces PAYE)",
+      amount: medicalTaxCredit,
+      type: "info",
+    });
+  }
 
   const totalNonStatutory = nonStatutoryLines.reduce((s, d) => s + d.amount, 0);
   const totalDeductions = Math.round((incomeTax + uif + totalNonStatutory) * 100) / 100;
   const net = Math.round((gross - totalDeductions) * 100) / 100;
 
-  return { gross: Math.round(gross * 100) / 100, incomeTax, uif, lines, net, totalDeductions };
+  return { gross: Math.round(gross * 100) / 100, incomeTax, uif, medicalTaxCredit, lines, net, totalDeductions };
 }

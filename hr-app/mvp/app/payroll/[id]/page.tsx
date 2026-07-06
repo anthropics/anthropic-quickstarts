@@ -95,7 +95,14 @@ export default function PayRunDetailPage({ params }: { params: { id: string } })
           </div>
           {run.notes && <p className="mt-1 text-sm text-gray-500">{run.notes}</p>}
         </div>
-        <RunActions runId={run.id} status={run.status} />
+        <div className="flex flex-wrap items-center gap-3">
+          {(run.status === "approved" || run.status === "paid") && (
+            <a href={`/api/payroll/runs/${run.id}/eft`} className="btn-secondary" download>
+              Download EFT file
+            </a>
+          )}
+          <RunActions runId={run.id} status={run.status} />
+        </div>
       </div>
 
       {/* Summary cards */}

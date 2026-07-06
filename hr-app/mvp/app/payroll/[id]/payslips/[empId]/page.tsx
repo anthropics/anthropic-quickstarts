@@ -2,7 +2,8 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getDb } from "@/lib/db";
 import { getCurrentUser, isHr } from "@/lib/session";
-import type { PayrollRun, Payslip, PayslipLine, Employee } from "@/lib/types";
+import type { PayrollRun, Payslip, Employee } from "@/lib/types";
+import type { EnginePayslipLine } from "@/app/payroll/_lib/engine";
 import PrintButton from "@/app/payroll/_components/PrintButton";
 
 export const dynamic = "force-dynamic";
@@ -52,9 +53,10 @@ export default function IndividualPayslipPage({
     .get(empId) as (Employee & { department_name: string | null }) | undefined;
   if (!employee) notFound();
 
-  const lines: PayslipLine[] = JSON.parse(payslip.lines ?? "[]");
+  const lines: EnginePayslipLine[] = JSON.parse(payslip.lines ?? "[]");
   const earningLines = lines.filter((l) => l.type === "earning");
   const deductionLines = lines.filter((l) => l.type === "deduction");
+  const infoLines = lines.filter((l) => l.type === "info");
 
   const backHref = isHr(user) ? `/payroll/${runId}` : "/payroll/my-payslips";
   const backLabel = isHr(user) ? "Back to Pay Run" : "My Payslips";
@@ -171,6 +173,18 @@ export default function IndividualPayslipPage({
             </tfoot>
           </table>
         </div>
+
+        {/* Info lines (e.g. medical scheme fees tax credit) */}
+        {infoLines.length > 0 && (
+          <div className="rounded-lg bg-gray-50 px-4 py-3 text-sm text-gray-600">
+            {infoLines.map((l, i) => (
+              <div key={i} className="flex items-center justify-between gap-4">
+                <span>Note: {l.label}</span>
+                <span className="font-mono">{fmt(l.amount)}</span>
+              </div>
+            ))}
+          </div>
+        )}
 
         {/* Net pay */}
         <div className="rounded-lg bg-brand-600 px-5 py-4 text-white">

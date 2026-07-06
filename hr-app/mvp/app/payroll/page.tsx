@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { getDb } from "@/lib/db";
 import { getCurrentUser, isHr } from "@/lib/session";
+import ExportsCard from "./_components/ExportsCard";
 
 export const dynamic = "force-dynamic";
 
@@ -66,6 +67,23 @@ export default function PayrollPage() {
     )
     .all() as RunRow[];
 
+  // Tax years with exportable data (SA tax year ends end-of-February): a
+  // payment in Mar–Dec YYYY falls in tax year YYYY+1; Jan–Feb in tax year YYYY.
+  const taxYears = new Set<number>();
+  const paymentDates = db
+    .prepare("SELECT payment_date FROM payroll_runs WHERE status IN ('approved', 'paid')")
+    .all() as { payment_date: string }[];
+  for (const { payment_date } of paymentDates) {
+    const y = Number(payment_date.slice(0, 4));
+    const m = Number(payment_date.slice(5, 7));
+    if (y) taxYears.add(m >= 3 ? y + 1 : y);
+  }
+  if (taxYears.size === 0) {
+    const now = new Date();
+    taxYears.add(now.getMonth() + 1 >= 3 ? now.getFullYear() + 1 : now.getFullYear());
+  }
+  const exportYears = Array.from(taxYears).sort((a, b) => b - a);
+
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-start justify-between gap-4">
@@ -119,6 +137,8 @@ export default function PayrollPage() {
           </tbody>
         </table>
       </div>
+
+      <ExportsCard years={exportYears} />
     </div>
   );
 }
