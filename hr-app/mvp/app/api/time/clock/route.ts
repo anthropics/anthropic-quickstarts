@@ -2,11 +2,10 @@ import { NextResponse } from "next/server";
 import { getDb, logAudit } from "@/lib/db";
 import { getCurrentUser } from "@/lib/session";
 import {
-  ALLOWED_TRANSITIONS,
   CLOCK_EVENT_TYPES,
-  clockStateFromEvents,
   nowSql,
   todaySql,
+  validateClockTransition,
   type ClockEventType,
 } from "@/app/time/_lib/time";
 
@@ -28,13 +27,9 @@ export async function POST(req: Request) {
     )
     .all(user.id, todaySql()) as { type: string; timestamp: string }[];
 
-  const state = clockStateFromEvents(todayEvents);
-  if (!ALLOWED_TRANSITIONS[state].includes(type)) {
-    const stateLabel = state === "on_break" ? "on break" : state;
-    return NextResponse.json(
-      { error: `Cannot ${type.replace("_", " ")} while ${stateLabel}.` },
-      { status: 400 }
-    );
+  const transitionError = validateClockTransition(todayEvents, type);
+  if (transitionError) {
+    return NextResponse.json({ error: transitionError }, { status: 400 });
   }
 
   const result = db

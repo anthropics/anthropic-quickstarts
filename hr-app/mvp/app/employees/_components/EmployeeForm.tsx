@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { EMPLOYMENT_TYPES, ROLES, STATUSES } from "./labels";
+import { CHANGE_REASONS, EMPLOYMENT_TYPES, ROLES, STATUSES } from "./labels";
 
 export interface EmployeeFormValues {
   id: number;
@@ -68,6 +68,7 @@ export default function EmployeeForm({ departments, managers, employee }: Props)
     };
     if (isEdit) {
       Object.assign(payload, {
+        change_reason: str("change_reason"),
         status: str("status"),
         personal_email: opt("personal_email"),
         date_of_birth: opt("date_of_birth"),
@@ -190,6 +191,19 @@ export default function EmployeeForm({ departments, managers, employee }: Props)
                   <option key={s.value} value={s.value}>{s.label}</option>
                 ))}
               </select>
+            </div>
+          )}
+          {isEdit && (
+            <div>
+              <label className="label" htmlFor="change_reason">Reason for change</label>
+              <select id="change_reason" name="change_reason" className="input" defaultValue="correction">
+                {CHANGE_REASONS.map((r) => (
+                  <option key={r.value} value={r.value}>{r.label}</option>
+                ))}
+              </select>
+              <p className="mt-1 text-xs text-gray-400">
+                Recorded in employment history when job title, department, manager or employment type changes.
+              </p>
             </div>
           )}
         </div>

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getDb, logAudit } from "@/lib/db";
 import { getCurrentUser, isHr } from "@/lib/session";
+import { notify } from "@/lib/notify";
 import type { Employee, LeaveRequest } from "@/lib/types";
 
 export async function PATCH(request: Request, { params }: { params: { id: string } }) {
@@ -52,6 +53,17 @@ export async function PATCH(request: Request, { params }: { params: { id: string
        WHERE id = ?`
     ).run(status, user.id, decisionNote, id);
     logAudit(user.id, action, "leave_request", id, decisionNote ?? undefined);
+
+    const typeName = (db.prepare("SELECT name FROM leave_types WHERE id = ?").get(req.leave_type_id) as { name: string } | undefined)?.name ?? "Leave";
+    const range = req.start_date === req.end_date ? req.start_date : `${req.start_date} to ${req.end_date}`;
+    notify({
+      employeeId: req.employee_id,
+      type: `leave.${status}`,
+      title: `Your leave request was ${status}`,
+      body: `${typeName}: ${range} — ${status} by ${user.first_name} ${user.last_name}.${decisionNote ? ` Note: ${decisionNote}` : ""}`,
+      link: "/leave",
+    });
+
     return NextResponse.json({ id, status });
   }
 

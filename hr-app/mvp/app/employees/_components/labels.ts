@@ -23,6 +23,13 @@ export const STATUSES: Option[] = [
   { value: "terminated", label: "Terminated" },
 ];
 
+export const CHANGE_REASONS: Option[] = [
+  { value: "correction", label: "Correction" },
+  { value: "promotion", label: "Promotion" },
+  { value: "transfer", label: "Transfer" },
+  { value: "restructure", label: "Restructure" },
+];
+
 export function labelFor(options: Option[], value: string | null | undefined): string {
   if (!value) return "—";
   return options.find((o) => o.value === value)?.label ?? value;

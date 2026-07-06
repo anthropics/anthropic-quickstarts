@@ -1,5 +1,12 @@
+import type DatabaseType from "better-sqlite3";
 import { getDb } from "@/lib/db";
 import type { LeaveType } from "@/lib/types";
+
+/** leave_types row including the accrual columns added in migration 002. */
+export interface LeaveTypeWithAccrual extends LeaveType {
+  accrual_method: "annual" | "monthly";
+  max_carry_over_days: number;
+}
 
 /** ISO date string YYYY-MM-DD validation. */
 export function isIsoDate(s: unknown): s is string {
@@ -29,49 +36,107 @@ export function workingDays(start: string, end: string, holidays: Set<string>): 
   return days;
 }
 
+/**
+ * Leave days for a request: working days minus 0.5 per half-day flag,
+ * clamped to a minimum of 0.5. Returns 0 when the range contains no
+ * working days at all (weekends / holidays only) so callers can reject it.
+ */
+export function computeLeaveDays(
+  start: string,
+  end: string,
+  holidays: Set<string>,
+  startHalf: boolean,
+  endHalf: boolean
+): number {
+  const days = workingDays(start, end, holidays);
+  if (days <= 0) return 0;
+  let result = days;
+  if (startHalf) result -= 0.5;
+  if (endHalf) result -= 0.5;
+  return Math.max(0.5, result);
+}
+
 export interface Balance {
-  leaveType: LeaveType;
+  leaveType: LeaveTypeWithAccrual;
+  /** Entitlement to date: accrual sum this year (monthly) or annual entitlement. */
   entitled: number;
+  /** Days carried over into this year (expire at year-end). */
+  carryOver: number;
   taken: number; // approved days this year
   pending: number; // pending days this year
-  available: number; // entitled - taken
+  available: number; // entitled + carryOver - taken
+}
+
+/**
+ * Single source of truth for a leave balance. For accrual_method='monthly'
+ * types, entitled-to-date = SUM(leave_accruals for the year); for 'annual'
+ * types, entitled = annual_entitlement_days. Carry-over for the year is
+ * tracked separately and included in `available`.
+ *
+ * Pass `db` explicitly in tests (in-memory better-sqlite3); defaults to the
+ * app database.
+ */
+export function getBalance(
+  employeeId: number,
+  leaveTypeId: number,
+  year: number,
+  db: DatabaseType.Database = getDb()
+): Balance | null {
+  const leaveType = db.prepare("SELECT * FROM leave_types WHERE id = ?").get(leaveTypeId) as
+    | LeaveTypeWithAccrual
+    | undefined;
+  if (!leaveType) return null;
+
+  let entitled: number;
+  if (leaveType.accrual_method === "monthly") {
+    entitled = (
+      db
+        .prepare(
+          `SELECT COALESCE(SUM(days), 0) AS d FROM leave_accruals
+           WHERE employee_id = ? AND leave_type_id = ? AND period LIKE ?`
+        )
+        .get(employeeId, leaveTypeId, `${year}-%`) as { d: number }
+    ).d;
+  } else {
+    entitled = leaveType.annual_entitlement_days;
+  }
+
+  const carryOver = (
+    db
+      .prepare(
+        `SELECT COALESCE(SUM(days), 0) AS d FROM leave_carry_overs
+         WHERE employee_id = ? AND leave_type_id = ? AND year = ?`
+      )
+      .get(employeeId, leaveTypeId, year) as { d: number }
+  ).d;
+
+  const usage = db
+    .prepare(
+      `SELECT
+         COALESCE(SUM(CASE WHEN status = 'approved' THEN days ELSE 0 END), 0) AS taken,
+         COALESCE(SUM(CASE WHEN status = 'pending' THEN days ELSE 0 END), 0) AS pending
+       FROM leave_requests
+       WHERE employee_id = ? AND leave_type_id = ? AND strftime('%Y', start_date) = ?`
+    )
+    .get(employeeId, leaveTypeId, String(year)) as { taken: number; pending: number };
+
+  return {
+    leaveType,
+    entitled,
+    carryOver,
+    taken: usage.taken,
+    pending: usage.pending,
+    available: entitled + carryOver - usage.taken,
+  };
 }
 
 /** Balance per leave type for the given employee and year (by start_date year). */
 export function getBalances(employeeId: number, year: number): Balance[] {
   const db = getDb();
-  const types = db.prepare("SELECT * FROM leave_types ORDER BY id").all() as LeaveType[];
-  const stmt = db.prepare(
-    `SELECT
-       COALESCE(SUM(CASE WHEN status = 'approved' THEN days ELSE 0 END), 0) AS taken,
-       COALESCE(SUM(CASE WHEN status = 'pending' THEN days ELSE 0 END), 0) AS pending
-     FROM leave_requests
-     WHERE employee_id = ? AND leave_type_id = ? AND strftime('%Y', start_date) = ?`
-  );
-  return types.map((lt) => {
-    const row = stmt.get(employeeId, lt.id, String(year)) as { taken: number; pending: number };
-    return {
-      leaveType: lt,
-      entitled: lt.annual_entitlement_days,
-      taken: row.taken,
-      pending: row.pending,
-      available: lt.annual_entitlement_days - row.taken,
-    };
-  });
-}
-
-/** Balance for one leave type (entitled − approved days this year). */
-export function getBalanceForType(employeeId: number, leaveTypeId: number, year: number): number {
-  const db = getDb();
-  const lt = db.prepare("SELECT * FROM leave_types WHERE id = ?").get(leaveTypeId) as LeaveType | undefined;
-  if (!lt) return 0;
-  const row = db
-    .prepare(
-      `SELECT COALESCE(SUM(days), 0) AS taken FROM leave_requests
-       WHERE employee_id = ? AND leave_type_id = ? AND status = 'approved' AND strftime('%Y', start_date) = ?`
-    )
-    .get(employeeId, leaveTypeId, String(year)) as { taken: number };
-  return lt.annual_entitlement_days - row.taken;
+  const types = db.prepare("SELECT id FROM leave_types ORDER BY id").all() as { id: number }[];
+  return types
+    .map((t) => getBalance(employeeId, t.id, year, db))
+    .filter((b): b is Balance => b !== null);
 }
 
 export function statusBadgeClass(status: string): string {
@@ -89,4 +154,14 @@ export function statusBadgeClass(status: string): string {
 
 export function formatDays(n: number): string {
   return Number.isInteger(n) ? String(n) : n.toFixed(1);
+}
+
+/** Compact date-range label with ½ markers for half-day starts/ends. */
+export function halfDayLabel(startHalf: number, endHalf: number, singleDay: boolean): string | null {
+  if (!startHalf && !endHalf) return null;
+  if (singleDay) return "½ half day";
+  const parts: string[] = [];
+  if (startHalf) parts.push("½ first day");
+  if (endHalf) parts.push("½ last day");
+  return parts.join(" · ");
 }

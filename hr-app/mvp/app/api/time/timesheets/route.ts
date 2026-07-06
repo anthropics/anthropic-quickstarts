@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getDb, logAudit } from "@/lib/db";
 import { getCurrentUser } from "@/lib/session";
+import { notify } from "@/lib/notify";
 import type { Timesheet } from "@/lib/types";
 import {
   STANDARD_WEEK_MINUTES,
@@ -89,6 +90,20 @@ export async function POST(req: Request) {
     id,
     `week ${periodStart}: ${totalMinutes} min (${overtimeMinutes} overtime)`
   );
+
+  // Notify the manager (or HR when there is no manager).
+  const reviewerIds = user.manager_id
+    ? [user.manager_id]
+    : (db.prepare("SELECT id FROM employees WHERE role IN ('hr','admin') AND status = 'active' AND id != ?").all(user.id) as { id: number }[]).map((r) => r.id);
+  for (const reviewerId of reviewerIds) {
+    notify({
+      employeeId: reviewerId,
+      type: "timesheet.submitted",
+      title: `Timesheet submitted by ${user.first_name} ${user.last_name}`,
+      body: `Week ${periodStart} – ${periodEnd}: ${Math.floor(totalMinutes / 60)}h ${totalMinutes % 60}m total${overtimeMinutes > 0 ? `, ${Math.floor(overtimeMinutes / 60)}h ${overtimeMinutes % 60}m overtime` : ""}.`,
+      link: "/time/team",
+    });
+  }
 
   return NextResponse.json({ ok: true, id, total_minutes: totalMinutes, overtime_minutes: overtimeMinutes });
 }

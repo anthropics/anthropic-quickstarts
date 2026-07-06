@@ -15,9 +15,13 @@ export default function RequestForm({ leaveTypes }: { leaveTypes: LeaveTypeOptio
   const [leaveTypeId, setLeaveTypeId] = useState(leaveTypes[0]?.id ?? 0);
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
+  const [startHalf, setStartHalf] = useState(false);
+  const [endHalf, setEndHalf] = useState(false);
   const [notes, setNotes] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+
+  const singleDay = Boolean(startDate) && startDate === endDate;
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -31,6 +35,8 @@ export default function RequestForm({ leaveTypes }: { leaveTypes: LeaveTypeOptio
           leave_type_id: leaveTypeId,
           start_date: startDate,
           end_date: endDate,
+          start_half: startHalf,
+          end_half: singleDay ? false : endHalf,
           notes: notes || undefined,
         }),
       });
@@ -42,6 +48,8 @@ export default function RequestForm({ leaveTypes }: { leaveTypes: LeaveTypeOptio
       setOpen(false);
       setStartDate("");
       setEndDate("");
+      setStartHalf(false);
+      setEndHalf(false);
       setNotes("");
       router.refresh();
     } catch {
@@ -105,6 +113,40 @@ export default function RequestForm({ leaveTypes }: { leaveTypes: LeaveTypeOptio
             required
           />
         </div>
+      </div>
+      <div className="flex flex-wrap gap-x-6 gap-y-2">
+        {singleDay ? (
+          <label className="inline-flex items-center gap-2 text-sm text-gray-700">
+            <input
+              type="checkbox"
+              className="h-4 w-4 rounded border-gray-300 text-brand-600 focus:ring-brand-500"
+              checked={startHalf}
+              onChange={(e) => setStartHalf(e.target.checked)}
+            />
+            Half day
+          </label>
+        ) : (
+          <>
+            <label className="inline-flex items-center gap-2 text-sm text-gray-700">
+              <input
+                type="checkbox"
+                className="h-4 w-4 rounded border-gray-300 text-brand-600 focus:ring-brand-500"
+                checked={startHalf}
+                onChange={(e) => setStartHalf(e.target.checked)}
+              />
+              First day is a half day (afternoon)
+            </label>
+            <label className="inline-flex items-center gap-2 text-sm text-gray-700">
+              <input
+                type="checkbox"
+                className="h-4 w-4 rounded border-gray-300 text-brand-600 focus:ring-brand-500"
+                checked={endHalf}
+                onChange={(e) => setEndHalf(e.target.checked)}
+              />
+              Last day is a half day (morning)
+            </label>
+          </>
+        )}
       </div>
       <div>
         <label className="label" htmlFor="lr-notes">Notes (optional)</label>

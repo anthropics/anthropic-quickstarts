@@ -8,6 +8,8 @@ export const dynamic = "force-dynamic";
 interface ApprovedRow {
   start_date: string;
   end_date: string;
+  start_half: number;
+  end_half: number;
   first_name: string;
   last_name: string;
   type_name: string;
@@ -49,7 +51,7 @@ export default function CalendarPage({ searchParams }: { searchParams: { month?:
 
   const approved = db
     .prepare(
-      `SELECT lr.start_date, lr.end_date, e.first_name, e.last_name,
+      `SELECT lr.start_date, lr.end_date, lr.start_half, lr.end_half, e.first_name, e.last_name,
               lt.name AS type_name, lt.colour AS type_colour
        FROM leave_requests lr
        JOIN employees e ON e.id = lr.employee_id
@@ -138,16 +140,22 @@ export default function CalendarPage({ searchParams }: { searchParams: { month?:
                     </p>
                   )}
                   <div className="mt-0.5 space-y-0.5">
-                    {onLeave.map((p, i) => (
-                      <p
-                        key={i}
-                        className="truncate rounded px-1 py-0.5 text-[10px] font-medium text-white"
-                        style={{ backgroundColor: p.type_colour }}
-                        title={`${p.first_name} ${p.last_name} — ${p.type_name}`}
-                      >
-                        {p.first_name} {p.last_name.charAt(0)}.
-                      </p>
-                    ))}
+                    {onLeave.map((p, i) => {
+                      const isHalf =
+                        (p.start_half === 1 && p.start_date === dateStr) ||
+                        (p.end_half === 1 && p.end_date === dateStr);
+                      return (
+                        <p
+                          key={i}
+                          className="truncate rounded px-1 py-0.5 text-[10px] font-medium text-white"
+                          style={{ backgroundColor: p.type_colour, opacity: isHalf ? 0.7 : 1 }}
+                          title={`${p.first_name} ${p.last_name} — ${p.type_name}${isHalf ? " (half day)" : ""}`}
+                        >
+                          {isHalf && <span className="mr-0.5 font-bold">½</span>}
+                          {p.first_name} {p.last_name.charAt(0)}.
+                        </p>
+                      );
+                    })}
                   </div>
                 </div>
               );

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getDb, logAudit } from "@/lib/db";
 import { getCurrentUser, isHr } from "@/lib/session";
+import { notify } from "@/lib/notify";
 import type { Timesheet } from "@/lib/types";
 import { nowSql } from "@/app/time/_lib/time";
 
@@ -44,6 +45,14 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
   const status = action === "approve" ? "approved" : "rejected";
   db.prepare("UPDATE timesheets SET status = ?, decided_at = ? WHERE id = ?").run(status, nowSql(), id);
   logAudit(user.id, `timesheet.${action}`, "timesheet", id, `week ${timesheet.period_start} for employee ${timesheet.employee_id}`);
+
+  notify({
+    employeeId: timesheet.employee_id,
+    type: `timesheet.${status}`,
+    title: `Your timesheet was ${status}`,
+    body: `Week ${timesheet.period_start} – ${timesheet.period_end} was ${status} by ${user.first_name} ${user.last_name}.`,
+    link: `/time?week=${timesheet.period_start}`,
+  });
 
   return NextResponse.json({ ok: true, status });
 }

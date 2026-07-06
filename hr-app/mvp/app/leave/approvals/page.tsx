@@ -1,6 +1,6 @@
 import { getDb } from "@/lib/db";
 import { getCurrentUser, canManage, isHr } from "@/lib/session";
-import { formatDays, getBalanceForType } from "../_lib/leave";
+import { formatDays, getBalance } from "../_lib/leave";
 import LeaveTabs from "../_components/LeaveTabs";
 import DecisionButtons from "../_components/DecisionButtons";
 
@@ -15,6 +15,8 @@ interface ApprovalRow {
   days: number;
   notes: string | null;
   created_at: string;
+  start_half: number;
+  end_half: number;
   employee_name: string;
   job_title: string;
   type_name: string;
@@ -42,7 +44,7 @@ export default function ApprovalsPage() {
     isHr(user)
       ? db
           .prepare(
-            `SELECT lr.id, lr.employee_id, lr.leave_type_id, lr.start_date, lr.end_date, lr.days, lr.notes, lr.created_at,
+            `SELECT lr.id, lr.employee_id, lr.leave_type_id, lr.start_date, lr.end_date, lr.days, lr.notes, lr.created_at, lr.start_half, lr.end_half,
                     e.first_name || ' ' || e.last_name AS employee_name, e.job_title,
                     lt.name AS type_name, lt.colour AS type_colour
              FROM leave_requests lr
@@ -54,7 +56,7 @@ export default function ApprovalsPage() {
           .all()
       : db
           .prepare(
-            `SELECT lr.id, lr.employee_id, lr.leave_type_id, lr.start_date, lr.end_date, lr.days, lr.notes, lr.created_at,
+            `SELECT lr.id, lr.employee_id, lr.leave_type_id, lr.start_date, lr.end_date, lr.days, lr.notes, lr.created_at, lr.start_half, lr.end_half,
                     e.first_name || ' ' || e.last_name AS employee_name, e.job_title,
                     lt.name AS type_name, lt.colour AS type_colour
              FROM leave_requests lr
@@ -82,7 +84,7 @@ export default function ApprovalsPage() {
       ) : (
         <div className="grid gap-4 lg:grid-cols-2">
           {rows.map((r) => {
-            const balance = getBalanceForType(r.employee_id, r.leave_type_id, year);
+            const balance = getBalance(r.employee_id, r.leave_type_id, year)?.available ?? 0;
             return (
               <div key={r.id} className="card space-y-3">
                 <div className="flex items-start justify-between gap-3">
@@ -102,7 +104,17 @@ export default function ApprovalsPage() {
                     <p className="label">Dates</p>
                     <p className="whitespace-nowrap">
                       {r.start_date}
-                      {r.end_date !== r.start_date && <> → {r.end_date}</>}
+                      {r.start_half === 1 && (
+                        <span className="ml-0.5 font-semibold text-brand-600" title={r.end_date === r.start_date ? "Half day" : "First day is a half day (afternoon)"}>½</span>
+                      )}
+                      {r.end_date !== r.start_date && (
+                        <>
+                          {" "}→ {r.end_date}
+                          {r.end_half === 1 && (
+                            <span className="ml-0.5 font-semibold text-brand-600" title="Last day is a half day (morning)">½</span>
+                          )}
+                        </>
+                      )}
                     </p>
                   </div>
                   <div>

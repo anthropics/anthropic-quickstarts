@@ -15,6 +15,72 @@ export const ALLOWED_TRANSITIONS: Record<ClockState, ClockEventType[]> = {
   on_break: ["break_end"],
 };
 
+/**
+ * Validate a clock event against the day's existing events (the shared
+ * state-machine check used by the web clock route and the kiosk).
+ * Returns null when the transition is allowed, or a human-readable error.
+ */
+export function validateClockTransition(
+  events: { type: string }[],
+  type: ClockEventType
+): string | null {
+  const state = clockStateFromEvents(events);
+  if (ALLOWED_TRANSITIONS[state].includes(type)) return null;
+  const stateLabel = state === "on_break" ? "on break" : state;
+  return `Cannot ${type.replace("_", " ")} while ${stateLabel}.`;
+}
+
+/** HH:MM (24h) validation. */
+export function isValidHHMM(s: unknown): s is string {
+  return typeof s === "string" && /^([01]\d|2[0-3]):[0-5]\d$/.test(s);
+}
+
+/** Minutes since midnight for an 'HH:MM' string. */
+export function hhmmToMinutes(hhmm: string): number {
+  return Number(hhmm.slice(0, 2)) * 60 + Number(hhmm.slice(3, 5));
+}
+
+/** 'HH:MM' for minutes since midnight (clamped to the same day). */
+export function minutesToHHMM(minutes: number): string {
+  const m = Math.max(0, Math.min(23 * 60 + 59, Math.round(minutes)));
+  return `${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`;
+}
+
+/**
+ * Does a proposed manual entry (start–end HH:MM) overlap any worked interval
+ * in the day's existing clock events? Pure function: `events` are that day's
+ * events sorted ascending. An interval still open (clock_in without a
+ * clock_out) is treated as running to end of day. Touching boundaries
+ * (existing ends 12:00, manual starts 12:00) do NOT count as overlap.
+ */
+export function manualEntryOverlaps(
+  events: { type: string; timestamp: string }[],
+  startHHMM: string,
+  endHHMM: string
+): boolean {
+  const start = hhmmToMinutes(startHHMM);
+  const end = hhmmToMinutes(endHHMM);
+  const END_OF_DAY = 24 * 60;
+
+  let openStart: number | null = null;
+  const intervals: [number, number][] = [];
+  for (const e of events) {
+    const t = hhmmToMinutes(e.timestamp.slice(11, 16));
+    if (e.type === "clock_in") {
+      if (openStart === null) openStart = t;
+    } else if (e.type === "clock_out") {
+      if (openStart !== null) {
+        intervals.push([openStart, t]);
+        openStart = null;
+      }
+    }
+    // breaks stay inside a worked interval — no effect on overlap bounds
+  }
+  if (openStart !== null) intervals.push([openStart, END_OF_DAY]);
+
+  return intervals.some(([s, e]) => start < e && end > s);
+}
+
 /** Current time as a SQLite-style 'YYYY-MM-DD HH:MM:SS' string (UTC, matching datetime('now')). */
 export function nowSql(): string {
   return new Date().toISOString().slice(0, 19).replace("T", " ");

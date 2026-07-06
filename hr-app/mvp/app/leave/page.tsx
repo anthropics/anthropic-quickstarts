@@ -16,6 +16,8 @@ interface MyRequestRow {
   notes: string | null;
   status: string;
   decision_note: string | null;
+  start_half: number;
+  end_half: number;
   type_name: string;
   type_colour: string;
 }
@@ -34,6 +36,7 @@ export default function MyLeavePage() {
   const requests = db
     .prepare(
       `SELECT lr.id, lr.start_date, lr.end_date, lr.days, lr.notes, lr.status, lr.decision_note,
+              lr.start_half, lr.end_half,
               lt.name AS type_name, lt.colour AS type_colour
        FROM leave_requests lr
        JOIN leave_types lt ON lt.id = lr.leave_type_id
@@ -61,9 +64,16 @@ export default function MyLeavePage() {
               {formatDays(b.available)} <span className="text-sm font-normal text-gray-400">available</span>
             </p>
             <p className="mt-1 text-xs text-gray-500">
-              {formatDays(b.entitled)} entitled · {formatDays(b.taken)} taken
+              {formatDays(b.entitled)} entitled
+              {b.leaveType.accrual_method === "monthly" && <span className="text-gray-400"> (accrued to date)</span>}
+              {" · "}{formatDays(b.taken)} taken
               {b.pending > 0 && <span className="text-yellow-700"> · {formatDays(b.pending)} pending</span>}
             </p>
+            {b.carryOver > 0 && (
+              <p className="mt-0.5 text-xs font-medium text-brand-700">
+                +{formatDays(b.carryOver)} carried over, expires year-end
+              </p>
+            )}
           </div>
         ))}
       </div>
@@ -100,7 +110,17 @@ export default function MyLeavePage() {
                 </td>
                 <td className="td whitespace-nowrap">
                   {r.start_date}
-                  {r.end_date !== r.start_date && <> → {r.end_date}</>}
+                  {r.start_half === 1 && (
+                    <span className="ml-0.5 font-semibold text-brand-600" title={r.end_date === r.start_date ? "Half day" : "First day is a half day (afternoon)"}>½</span>
+                  )}
+                  {r.end_date !== r.start_date && (
+                    <>
+                      {" "}→ {r.end_date}
+                      {r.end_half === 1 && (
+                        <span className="ml-0.5 font-semibold text-brand-600" title="Last day is a half day (morning)">½</span>
+                      )}
+                    </>
+                  )}
                 </td>
                 <td className="td">{formatDays(r.days)}</td>
                 <td className="td">

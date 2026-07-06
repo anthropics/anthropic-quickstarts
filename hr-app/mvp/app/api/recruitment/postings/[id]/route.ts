@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getDb, logAudit } from "@/lib/db";
 import { getCurrentUser, isHr } from "@/lib/session";
+import { generateSlug } from "@/app/api/careers/_lib/validate";
 import type { JobPosting } from "@/lib/types";
 
 export async function PATCH(request: Request, { params }: { params: { id: string } }) {
@@ -15,7 +16,9 @@ export async function PATCH(request: Request, { params }: { params: { id: string
     return NextResponse.json({ error: "Invalid posting id." }, { status: 400 });
   }
 
-  const posting = db.prepare("SELECT * FROM job_postings WHERE id = ?").get(id) as JobPosting | undefined;
+  const posting = db.prepare("SELECT * FROM job_postings WHERE id = ?").get(id) as
+    | (JobPosting & { public_slug: string | null })
+    | undefined;
   if (!posting) {
     return NextResponse.json({ error: "Job posting not found." }, { status: 404 });
   }
@@ -54,9 +57,14 @@ export async function PATCH(request: Request, { params }: { params: { id: string
         { status: 400 }
       );
     }
-    const postedAt = body.status === "open" ? "datetime('now')" : null;
-    if (postedAt) {
-      db.prepare(`UPDATE job_postings SET status = ?, posted_at = datetime('now') WHERE id = ?`).run(body.status, id);
+    if (body.status === "open") {
+      // Publishing: stamp posted_at and mint the public careers slug if empty.
+      const slug = posting.public_slug?.trim()
+        ? posting.public_slug
+        : generateSlug(body.title?.trim() || posting.title, id);
+      db.prepare(
+        `UPDATE job_postings SET status = ?, posted_at = datetime('now'), public_slug = ? WHERE id = ?`
+      ).run(body.status, slug, id);
     } else {
       db.prepare("UPDATE job_postings SET status = ? WHERE id = ?").run(body.status, id);
     }
