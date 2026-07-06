@@ -44,6 +44,8 @@ function sourceBadge(source: string) {
       return <span className="badge-green">Referral</span>;
     case "internal":
       return <span className="badge-blue">Internal</span>;
+    case "careers":
+      return <span className="badge-green">Careers site</span>;
     default:
       return <span className="badge-gray">Direct</span>;
   }

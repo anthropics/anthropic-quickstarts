@@ -23,13 +23,13 @@ export default function CandidatesPage({ searchParams }: { searchParams: { q?: s
     ORDER BY c.created_at DESC
   `).all(q, `%${q}%`, `%${q}%`) as {
     id: number; first_name: string; last_name: string; email: string;
-    phone: string | null; cv_filename: string | null; source: string;
-    created_at: string; application_count: number;
+    phone: string | null; cv_filename: string | null; cv_file_id: number | null;
+    source: string; created_at: string; application_count: number;
   }[];
 
   const sourceColour: Record<string, string> = {
     linkedin: "badge-blue", indeed: "badge-green", direct: "badge-gray",
-    referral: "badge-yellow", internal: "badge-yellow",
+    referral: "badge-yellow", internal: "badge-yellow", careers: "badge-green",
   };
 
   return (
@@ -73,7 +73,20 @@ export default function CandidatesPage({ searchParams }: { searchParams: { q?: s
                 <td className="td">
                   <span className={sourceColour[c.source] ?? "badge-gray"}>{c.source}</span>
                 </td>
-                <td className="td text-gray-500">{c.cv_filename ?? "—"}</td>
+                <td className="td text-gray-500">
+                  {c.cv_file_id ? (
+                    <a
+                      href={`/api/files/${c.cv_file_id}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="font-medium text-brand-600 hover:underline"
+                    >
+                      View CV
+                    </a>
+                  ) : (
+                    c.cv_filename ?? "—"
+                  )}
+                </td>
                 <td className="td">{c.application_count}</td>
                 <td className="td text-gray-500">{c.created_at.slice(0, 10)}</td>
               </tr>

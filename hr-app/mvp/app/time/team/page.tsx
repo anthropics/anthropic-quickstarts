@@ -3,6 +3,7 @@ import { getDb } from "@/lib/db";
 import { getCurrentUser, canManage, isHr } from "@/lib/session";
 import type { ClockEvent, Employee, Timesheet } from "@/lib/types";
 import TimesheetActions from "../_components/TimesheetActions";
+import TimeEntryActions from "../_components/TimeEntryActions";
 import {
   clockStateFromEvents,
   fmtMinutes,
@@ -100,6 +101,30 @@ export default function TeamTimePage() {
         ).all(user.id)
   ) as (Timesheet & { employee_name: string; job_title: string })[];
 
+  const pendingEntries = (
+    hr
+      ? db.prepare(
+          `SELECT m.*, e.first_name || ' ' || e.last_name AS employee_name, e.job_title
+           FROM manual_time_entries m JOIN employees e ON e.id = m.employee_id
+           WHERE m.status = 'pending' ORDER BY m.date, m.id`
+        ).all()
+      : db.prepare(
+          `SELECT m.*, e.first_name || ' ' || e.last_name AS employee_name, e.job_title
+           FROM manual_time_entries m JOIN employees e ON e.id = m.employee_id
+           WHERE m.status = 'pending' AND e.manager_id = ? ORDER BY m.date, m.id`
+        ).all(user.id)
+  ) as {
+    id: number;
+    date: string;
+    start_time: string;
+    end_time: string;
+    break_minutes: number;
+    reason: string;
+    created_at: string;
+    employee_name: string;
+    job_title: string;
+  }[];
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -145,6 +170,51 @@ export default function TeamTimePage() {
                     <td className="td font-mono">{firstIn ?? "—"}</td>
                     <td className="td font-mono">{lastOut ?? "—"}</td>
                     <td className="td font-mono">{workedSoFar > 0 ? fmtMinutes(workedSoFar) : "—"}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      <div className="card">
+        <h2 className="mb-3 font-semibold">Pending timesheet corrections</h2>
+        {pendingEntries.length === 0 ? (
+          <p className="text-sm text-gray-500">No corrections waiting for review.</p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr className="border-b border-gray-200">
+                  <th className="th">Employee</th>
+                  <th className="th">Date</th>
+                  <th className="th">Time</th>
+                  <th className="th">Break</th>
+                  <th className="th">Reason</th>
+                  <th className="th text-right">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {pendingEntries.map((m) => (
+                  <tr key={m.id} className="border-b border-gray-100 last:border-0">
+                    <td className="td">
+                      <p className="font-medium text-gray-900">{m.employee_name}</p>
+                      <p className="text-xs text-gray-500">{m.job_title}</p>
+                    </td>
+                    <td className="td whitespace-nowrap">{m.date}</td>
+                    <td className="td font-mono">
+                      {m.start_time}–{m.end_time}
+                    </td>
+                    <td className="td">{m.break_minutes > 0 ? `${m.break_minutes} min` : "—"}</td>
+                    <td className="td max-w-xs">
+                      <span className="block truncate" title={m.reason}>{m.reason}</span>
+                    </td>
+                    <td className="td">
+                      <div className="flex justify-end">
+                        <TimeEntryActions entryId={m.id} />
+                      </div>
+                    </td>
                   </tr>
                 ))}
               </tbody>

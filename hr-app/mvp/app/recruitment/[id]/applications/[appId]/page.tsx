@@ -6,6 +6,7 @@ import StageActions from "@/app/recruitment/_components/StageActions";
 import NotesEditor from "@/app/recruitment/_components/NotesEditor";
 import ScheduleInterviewForm from "@/app/recruitment/_components/ScheduleInterviewForm";
 import CreateOfferForm from "@/app/recruitment/_components/CreateOfferForm";
+import SendEmailForm from "@/app/recruitment/_components/SendEmailForm";
 import type { Application, Candidate, JobPosting, Interview, Offer, ApplicationStage } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
@@ -60,6 +61,8 @@ function sourceBadge(source: string) {
       return <span className="badge-green">Referral</span>;
     case "internal":
       return <span className="badge-blue">Internal</span>;
+    case "careers":
+      return <span className="badge-green">Careers site</span>;
     default:
       return <span className="badge-gray">Direct</span>;
   }
@@ -82,7 +85,7 @@ export default function ApplicationDetailPage({
 
   const app = db
     .prepare(
-      `SELECT a.*, c.first_name, c.last_name, c.email, c.phone, c.cv_filename, c.source,
+      `SELECT a.*, c.first_name, c.last_name, c.email, c.phone, c.cv_filename, c.cv_file_id, c.source,
               jp.title AS job_title
        FROM applications a
        JOIN candidates c ON c.id = a.candidate_id
@@ -91,7 +94,7 @@ export default function ApplicationDetailPage({
     )
     .get(appId, postingId) as
     | (Application &
-        Candidate & { job_title: string; app_id?: number })
+        Candidate & { job_title: string; cv_file_id: number | null; app_id?: number })
     | undefined;
 
   if (!app) notFound();
@@ -107,6 +110,15 @@ export default function ApplicationDetailPage({
     .prepare("SELECT * FROM offers WHERE application_id = ? ORDER BY created_at DESC LIMIT 1")
     .get(appId) as Offer | undefined;
 
+  // Hired → employee conversion: offered-and-accepted or already-hired applications.
+  const hiredEmployee = db
+    .prepare("SELECT id FROM employees WHERE lower(work_email) = lower(?)")
+    .get(app.email) as { id: number } | undefined;
+  const canConvert =
+    userIsHr &&
+    !hiredEmployee &&
+    (app.stage === "hired" || (app.stage === "offer" && offer?.status === "accepted"));
+
   const employees = db
     .prepare(
       "SELECT id, first_name || ' ' || last_name AS name FROM employees WHERE status = 'active' ORDER BY first_name, last_name"
@@ -118,18 +130,30 @@ export default function ApplicationDetailPage({
   return (
     <div className="space-y-6 max-w-3xl">
       {/* Breadcrumb */}
-      <div>
-        <Link href={`/recruitment/${postingId}`} className="text-sm text-brand-600 hover:underline">
-          ← {app.job_title}
-        </Link>
-        <h1 className="mt-1 text-2xl font-bold">
-          {app.first_name} {app.last_name}
-        </h1>
-        <div className="mt-1 flex flex-wrap items-center gap-2">
-          {stageBadge(app.stage)}
-          {sourceBadge(app.source)}
-          <span className="text-sm text-gray-500">Applied {app.created_at.slice(0, 10)}</span>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <Link href={`/recruitment/${postingId}`} className="text-sm text-brand-600 hover:underline">
+            ← {app.job_title}
+          </Link>
+          <h1 className="mt-1 text-2xl font-bold">
+            {app.first_name} {app.last_name}
+          </h1>
+          <div className="mt-1 flex flex-wrap items-center gap-2">
+            {stageBadge(app.stage)}
+            {sourceBadge(app.source)}
+            <span className="text-sm text-gray-500">Applied {app.created_at.slice(0, 10)}</span>
+          </div>
         </div>
+        {canConvert && (
+          <Link href={`/recruitment/${postingId}/applications/${appId}/hire`} className="btn-primary">
+            Convert to employee
+          </Link>
+        )}
+        {userIsHr && hiredEmployee && (
+          <Link href={`/employees/${hiredEmployee.id}`} className="btn-secondary">
+            View employee profile
+          </Link>
+        )}
       </div>
 
       {/* Candidate info */}
@@ -146,10 +170,23 @@ export default function ApplicationDetailPage({
               <dd className="mt-0.5 text-gray-900">{app.phone}</dd>
             </div>
           )}
-          {app.cv_filename && (
+          {(app.cv_file_id || app.cv_filename) && (
             <div>
               <dt className="text-xs font-medium uppercase tracking-wide text-gray-500">CV</dt>
-              <dd className="mt-0.5 text-gray-900">{app.cv_filename}</dd>
+              <dd className="mt-0.5 text-gray-900">
+                {app.cv_file_id ? (
+                  <a
+                    href={`/api/files/${app.cv_file_id}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="font-medium text-brand-600 hover:underline"
+                  >
+                    View CV{app.cv_filename ? ` (${app.cv_filename})` : ""}
+                  </a>
+                ) : (
+                  app.cv_filename
+                )}
+              </dd>
             </div>
           )}
           <div>
@@ -261,6 +298,17 @@ export default function ApplicationDetailPage({
               {userIsHr && <CreateOfferForm appId={appId} />}
             </div>
           )}
+        </div>
+      )}
+
+      {/* Candidate communications */}
+      {userIsHr && (
+        <div className="card">
+          <h2 className="mb-1 font-semibold">Send email</h2>
+          <p className="mb-3 text-sm text-gray-500">
+            Queue a templated email to the candidate. Sent emails are recorded in the notes.
+          </p>
+          <SendEmailForm appId={appId} candidateEmail={app.email} />
         </div>
       )}
     </div>

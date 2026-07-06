@@ -155,13 +155,3 @@ export function statusBadgeClass(status: string): string {
 export function formatDays(n: number): string {
   return Number.isInteger(n) ? String(n) : n.toFixed(1);
 }
-
-/** Compact date-range label with ½ markers for half-day starts/ends. */
-export function halfDayLabel(startHalf: number, endHalf: number, singleDay: boolean): string | null {
-  if (!startHalf && !endHalf) return null;
-  if (singleDay) return "½ half day";
-  const parts: string[] = [];
-  if (startHalf) parts.push("½ first day");
-  if (endHalf) parts.push("½ last day");
-  return parts.join(" · ");
-}

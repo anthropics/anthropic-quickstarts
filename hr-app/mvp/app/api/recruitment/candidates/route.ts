@@ -17,6 +17,7 @@ export async function POST(request: Request) {
     email?: string;
     phone?: string;
     cv_filename?: string;
+    cv_file_id?: number | null;
     source?: string;
     job_posting_id?: number;
   };
@@ -48,17 +49,36 @@ export async function POST(request: Request) {
   const validSources = ["direct", "linkedin", "indeed", "referral", "internal"];
   const source = body.source && validSources.includes(body.source) ? body.source : "direct";
 
+  // Optional uploaded CV (file id from POST /api/files).
+  let cvFileId: number | null = null;
+  let cvFilename: string | null =
+    typeof body.cv_filename === "string" && body.cv_filename.trim() ? body.cv_filename.trim() : null;
+  if (body.cv_file_id !== undefined && body.cv_file_id !== null) {
+    if (typeof body.cv_file_id !== "number" || !Number.isInteger(body.cv_file_id)) {
+      return NextResponse.json({ error: "cv_file_id must be an integer." }, { status: 400 });
+    }
+    const file = db.prepare("SELECT id, original_name FROM files WHERE id = ?").get(body.cv_file_id) as
+      | { id: number; original_name: string }
+      | undefined;
+    if (!file) {
+      return NextResponse.json({ error: "Uploaded CV file not found." }, { status: 400 });
+    }
+    cvFileId = file.id;
+    cvFilename = cvFilename ?? file.original_name;
+  }
+
   const candidateResult = db
     .prepare(
-      `INSERT INTO candidates (first_name, last_name, email, phone, cv_filename, source)
-       VALUES (?, ?, ?, ?, ?, ?)`
+      `INSERT INTO candidates (first_name, last_name, email, phone, cv_filename, cv_file_id, source)
+       VALUES (?, ?, ?, ?, ?, ?, ?)`
     )
     .run(
       first_name,
       last_name,
       email,
       typeof body.phone === "string" && body.phone.trim() ? body.phone.trim() : null,
-      typeof body.cv_filename === "string" && body.cv_filename.trim() ? body.cv_filename.trim() : null,
+      cvFilename,
+      cvFileId,
       source
     );
 

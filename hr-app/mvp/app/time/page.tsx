@@ -4,6 +4,7 @@ import { getCurrentUser, canManage } from "@/lib/session";
 import type { ClockEvent, Timesheet } from "@/lib/types";
 import ClockWidget from "./_components/ClockWidget";
 import SubmitTimesheetButton from "./_components/SubmitTimesheetButton";
+import AddTimeEntryForm from "./_components/AddTimeEntryForm";
 import {
   EVENT_LABELS,
   STANDARD_WEEK_MINUTES,
@@ -83,6 +84,25 @@ export default function TimePage({ searchParams }: { searchParams: { week?: stri
   const myTimesheets = db
     .prepare("SELECT * FROM timesheets WHERE employee_id = ? ORDER BY period_start DESC")
     .all(user.id) as Timesheet[];
+
+  const myEntries = db
+    .prepare("SELECT * FROM manual_time_entries WHERE employee_id = ? ORDER BY date DESC, id DESC LIMIT 20")
+    .all(user.id) as {
+    id: number;
+    date: string;
+    start_time: string;
+    end_time: string;
+    break_minutes: number;
+    reason: string;
+    status: "pending" | "approved" | "rejected";
+    decided_at: string | null;
+  }[];
+
+  const ENTRY_BADGES = {
+    pending: "badge-yellow",
+    approved: "badge-green",
+    rejected: "badge-red",
+  } as const;
 
   return (
     <div className="space-y-6">
@@ -183,6 +203,49 @@ export default function TimePage({ searchParams }: { searchParams: { week?: stri
             ) : null}
           </div>
         </div>
+      </div>
+
+      <div className="card">
+        <div className="mb-3 flex items-center justify-between">
+          <h2 className="font-semibold">Timesheet corrections</h2>
+        </div>
+        <div className="mb-4">
+          <AddTimeEntryForm minDate={addDays(today, -14)} maxDate={today} />
+        </div>
+        {myEntries.length === 0 ? (
+          <p className="text-sm text-gray-500">
+            No corrections yet. Use &ldquo;Add missing time&rdquo; if you forgot to clock in or out.
+          </p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr className="border-b border-gray-200">
+                  <th className="th">Date</th>
+                  <th className="th">Time</th>
+                  <th className="th">Break</th>
+                  <th className="th">Reason</th>
+                  <th className="th">Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {myEntries.map((m) => (
+                  <tr key={m.id} className="border-b border-gray-100 last:border-0">
+                    <td className="td whitespace-nowrap">{m.date}</td>
+                    <td className="td font-mono">
+                      {m.start_time}–{m.end_time}
+                    </td>
+                    <td className="td">{m.break_minutes > 0 ? `${m.break_minutes} min` : "—"}</td>
+                    <td className="td max-w-xs truncate" title={m.reason}>{m.reason}</td>
+                    <td className="td">
+                      <span className={`${ENTRY_BADGES[m.status]} capitalize`}>{m.status}</span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
 
       <div className="card">

@@ -21,12 +21,34 @@ export default function AddCandidateForm({ postingId }: AddCandidateFormProps) {
     const form = e.currentTarget;
     const data = new FormData(form);
 
+    // Upload the CV first (authenticated file store), then link its id.
+    let cvFileId: number | null = null;
+    const cv = data.get("cv");
+    if (cv && typeof cv !== "string" && cv.size > 0) {
+      const uploadData = new FormData();
+      uploadData.set("file", cv);
+      try {
+        const uploadRes = await fetch("/api/files", { method: "POST", body: uploadData });
+        const uploadJson = await uploadRes.json();
+        if (!uploadRes.ok) {
+          setError(uploadJson.error ?? "CV upload failed.");
+          setSaving(false);
+          return;
+        }
+        cvFileId = uploadJson.id;
+      } catch {
+        setError("CV upload failed. Please try again.");
+        setSaving(false);
+        return;
+      }
+    }
+
     const payload = {
       first_name: data.get("first_name") as string,
       last_name: data.get("last_name") as string,
       email: data.get("email") as string,
       phone: data.get("phone") as string || null,
-      cv_filename: data.get("cv_filename") as string || null,
+      cv_file_id: cvFileId,
       source: data.get("source") as string,
       job_posting_id: postingId,
     };
@@ -81,15 +103,19 @@ export default function AddCandidateForm({ postingId }: AddCandidateFormProps) {
               <label className="label">Email *</label>
               <input name="email" type="email" required className="input" />
             </div>
-            <div className="grid gap-3 sm:grid-cols-2">
-              <div>
-                <label className="label">Phone</label>
-                <input name="phone" className="input" />
-              </div>
-              <div>
-                <label className="label">CV filename</label>
-                <input name="cv_filename" className="input" placeholder="e.g. resume.pdf" />
-              </div>
+            <div>
+              <label className="label">Phone</label>
+              <input name="phone" className="input" />
+            </div>
+            <div>
+              <label className="label">CV file</label>
+              <input
+                name="cv"
+                type="file"
+                accept=".pdf,.doc,.docx,.png,.jpg,.jpeg,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,image/png,image/jpeg"
+                className="block w-full text-sm text-gray-600 file:mr-3 file:rounded-lg file:border-0 file:bg-gray-100 file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-gray-700 hover:file:bg-gray-200"
+              />
+              <p className="mt-1 text-xs text-gray-400">PDF, DOC, DOCX, PNG or JPG — up to 5 MB.</p>
             </div>
             <div>
               <label className="label">Source</label>
