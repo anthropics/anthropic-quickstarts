@@ -48,21 +48,21 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               <span className="text-lg font-bold">HRCore</span>
             </div>
             <nav className="flex flex-1 flex-col gap-1">
-              <NavLink href="/" label="Dashboard" icon="🏠" />
+              <NavLink href="/" label="Dashboard" icon="home" />
               <p className="mt-3 mb-1 px-3 text-[10px] font-semibold uppercase tracking-wider text-gray-400">People</p>
-              <NavLink href="/employees" label="Employees" icon="👤" />
-              <NavLink href="/org-chart" label="Org Chart" icon="🌳" />
+              <NavLink href="/employees" label="Employees" icon="people" />
+              <NavLink href="/org-chart" label="Org Chart" icon="accountTree" />
               <p className="mt-3 mb-1 px-3 text-[10px] font-semibold uppercase tracking-wider text-gray-400">Workforce</p>
-              <NavLink href="/leave" label="Leave" icon="📅" />
-              <NavLink href="/time" label="Time & Attendance" icon="⏱️" />
+              <NavLink href="/leave" label="Leave" icon="calendar" />
+              <NavLink href="/time" label="Time & Attendance" icon="schedule" />
               <p className="mt-3 mb-1 px-3 text-[10px] font-semibold uppercase tracking-wider text-gray-400">Talent</p>
-              <NavLink href="/recruitment" label="Recruitment" icon="🎯" />
-              <NavLink href="/onboarding" label="Onboarding" icon="🚀" />
-              <NavLink href="/performance" label="Performance" icon="📊" />
+              <NavLink href="/recruitment" label="Recruitment" icon="personSearch" />
+              <NavLink href="/onboarding" label="Onboarding" icon="rocket" />
+              <NavLink href="/performance" label="Performance" icon="barChart" />
               <p className="mt-3 mb-1 px-3 text-[10px] font-semibold uppercase tracking-wider text-gray-400">Finance</p>
-              <NavLink href="/payroll" label="Payroll" icon="💰" />
-              <NavLink href="/expenses" label="Expenses" icon="💸" />
-              <NavLink href="/benefits" label="Benefits" icon="💼" />
+              <NavLink href="/payroll" label="Payroll" icon="payments" />
+              <NavLink href="/expenses" label="Expenses" icon="receipt" />
+              <NavLink href="/benefits" label="Benefits" icon="work" />
             </nav>
             <div className="mt-auto border-t border-gray-100 pt-3 text-xs text-gray-400">
               HRCore · v1.0

@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { getDb } from "@/lib/db";
 import { getCurrentUser, isHr, canManage } from "@/lib/session";
+import { Icon } from "@/components/icons";
 import TaskCompleteWidget from "../_components/TaskCompleteWidget";
 import AdHocTaskForm from "../_components/AdHocTaskForm";
 import PrintButton from "../_components/PrintButton";
@@ -157,7 +158,7 @@ export default function InstancePage({ params }: { params: { instanceId: string 
       {/* All done banner */}
       {allDone && (
         <div className="rounded-xl bg-green-50 px-6 py-4 text-center">
-          <p className="text-lg font-semibold text-green-700">All done! 🎉</p>
+          <p className="flex items-center justify-center gap-2 text-lg font-semibold text-green-700"><Icon name="checkCircle" size={22} /> All done!</p>
           <p className="text-sm text-green-600">
             {instance.employee_name} has completed all onboarding tasks.
           </p>

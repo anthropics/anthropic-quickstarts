@@ -90,7 +90,7 @@ export default function ExpenseApprovalsPage() {
       <ExpenseTabs active="approvals" showApprovals={true} showAdmin={isHr(user)} />
 
       {pending.length === 0 ? (
-        <div className="card text-sm text-gray-500">Nothing to approve right now. 🎉</div>
+        <div className="card text-sm text-gray-500">Nothing to approve right now.</div>
       ) : (
         <div className="grid gap-4 lg:grid-cols-2">
           {pending.map((r) => {

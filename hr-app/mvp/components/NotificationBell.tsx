@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { Icon } from "./icons";
 
 interface Notification {
   id: number;
@@ -54,7 +55,7 @@ export default function NotificationBell({ initialUnread }: { initialUnread: num
   return (
     <div className="relative">
       <button onClick={toggle} className="relative rounded-lg p-2 hover:bg-gray-100" aria-label="Notifications">
-        <span aria-hidden>🔔</span>
+        <Icon name="notifications" size={20} className="text-gray-600" />
         {unread > 0 && (
           <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-600 px-1 text-[10px] font-bold text-white">
             {unread > 9 ? "9+" : unread}
