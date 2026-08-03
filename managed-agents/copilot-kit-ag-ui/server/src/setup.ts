@@ -12,7 +12,6 @@ import Anthropic from '@anthropic-ai/sdk';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { vizToolDefinitions } from './vizTools.ts';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 export const AGENT_IDS_PATH = path.resolve(here, '../../agent-ids.json');
@@ -50,6 +49,8 @@ How you work:
   spending bars), and show_comparison (scenario A vs B bars). Whenever a concept has numbers
   behind it, call the matching visual with those numbers, then keep your prose short and let
   the visual carry the explanation. One or two visuals per reply, placed where they help most.
+  Call each visual tool directly as a top-level tool call, never from inside a repl
+  script: a repl-wrapped call cannot reach the user.
 - You provide educational guidance, not personalized investment advice. When a decision
   depends on someone's full financial picture (taxes, jurisdiction, risk tolerance), say what
   generally applies and note what a licensed professional would need to know. Keep answers
@@ -99,12 +100,14 @@ async function main() {
     name: 'financial-assistant',
     model: MODEL,
     system: ASSISTANT_SYSTEM,
+    // The visual tools (vizTools.ts) are not registered here: the AG-UI
+    // adapter adds them to each session as tool overrides, merged with the
+    // toolset below, so changing them never requires re-provisioning.
     tools: [
       {
         type: 'agent_toolset_20260401',
         configs: [{ name: 'web_fetch', enabled: false }],
       },
-      ...vizToolDefinitions,
     ],
   });
   console.log(`  financial-assistant ${agent.id} (version ${agent.version})`);

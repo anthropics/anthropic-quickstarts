@@ -1,34 +1,27 @@
 /**
- * Generative-UI tools: custom (client-rendered) tools declared on the managed
- * agent. The agent calls one of these with the numbers it wants to show; the
- * bridge forwards the call to the browser as AG-UI TOOL_CALL events, CopilotKit
- * renders it with an interactive React component (see web/src/viz), and the
- * bridge immediately acks the session so the turn keeps flowing.
+ * Generative-UI tools: custom tools the agent calls with the numbers it wants
+ * to show. Registered on each session by @ag-ui/claude-managed-agents as
+ * backend tools: the adapter streams each call to the browser as AG-UI
+ * TOOL_CALL events, CopilotKit renders it as an interactive React component
+ * (see web/src/viz), and the handler's ack goes back to the session so the
+ * turn keeps flowing. The rendering IS the result, so the handlers ignore
+ * their input and just confirm.
  */
+import type { BackendCustomTool } from '@ag-ui/claude-managed-agents';
 
-export const VIZ_TOOL_NAMES = [
-  'show_payoff_timeline',
-  'show_growth_projection',
-  'show_budget_breakdown',
-  'show_comparison',
-] as const;
+const rendered = (name: string) => () =>
+  `Rendered "${name}" to the user as an interactive visual.`;
 
-export type VizToolName = (typeof VIZ_TOOL_NAMES)[number];
-
-export const isVizTool = (name: string): name is VizToolName =>
-  (VIZ_TOOL_NAMES as readonly string[]).includes(name);
-
-export const vizToolDefinitions = [
+export const vizTools: BackendCustomTool[] = [
   {
-    type: 'custom' as const,
     name: 'show_payoff_timeline',
     description:
       'Render an interactive debt-payoff chart in the chat: remaining balance by month, ' +
       'payoff date, and total interest, with a payment slider the user can drag to explore ' +
       '"what if I paid more". Use whenever you discuss paying down a specific debt. ' +
       'Pass a comparisonPayment to contrast two plans (e.g. minimum vs aggressive).',
-    input_schema: {
-      type: 'object' as const,
+    parameters: {
+      type: 'object',
       properties: {
         title: { type: 'string', description: 'Short chart title, e.g. "Credit card payoff"' },
         principal: { type: 'number', exclusiveMinimum: 0, description: 'Current balance in dollars' },
@@ -42,16 +35,16 @@ export const vizToolDefinitions = [
       },
       required: ['title', 'principal', 'aprPercent', 'monthlyPayment'],
     },
+    handler: rendered('show_payoff_timeline'),
   },
   {
-    type: 'custom' as const,
     name: 'show_growth_projection',
     description:
       'Render an interactive compound-growth chart in the chat: projected value over the ' +
       'years versus total contributed, with sliders for monthly contribution and return rate. ' +
       'Use whenever you discuss investing, retirement pace, or "what will this grow to".',
-    input_schema: {
-      type: 'object' as const,
+    parameters: {
+      type: 'object',
       properties: {
         title: { type: 'string', description: 'Short chart title, e.g. "Roth IRA at 7%"' },
         initialAmount: { type: 'number', minimum: 0, description: 'Starting balance in dollars' },
@@ -61,16 +54,16 @@ export const vizToolDefinitions = [
       },
       required: ['title', 'initialAmount', 'monthlyContribution', 'annualReturnPercent', 'years'],
     },
+    handler: rendered('show_growth_projection'),
   },
   {
-    type: 'custom' as const,
     name: 'show_budget_breakdown',
     description:
       'Render a budget bar chart in the chat: each spending category as a share of monthly ' +
       'income, with anything unallocated shown as a remainder. Use when reviewing how ' +
       "someone's income is divided or proposing a budget.",
-    input_schema: {
-      type: 'object' as const,
+    parameters: {
+      type: 'object',
       properties: {
         title: { type: 'string', description: 'Short chart title, e.g. "Monthly budget"' },
         monthlyIncome: { type: 'number', exclusiveMinimum: 0, description: 'Monthly take-home income in dollars' },
@@ -89,16 +82,16 @@ export const vizToolDefinitions = [
       },
       required: ['title', 'monthlyIncome', 'items'],
     },
+    handler: rendered('show_budget_breakdown'),
   },
   {
-    type: 'custom' as const,
     name: 'show_comparison',
     description:
       'Render a small bar comparison of 2-5 scenarios in the chat, e.g. total interest under ' +
       'avalanche vs snowball, or renting vs buying over five years. Use when the point is ' +
       '"option A vs option B" and a number captures each option.',
-    input_schema: {
-      type: 'object' as const,
+    parameters: {
+      type: 'object',
       properties: {
         title: { type: 'string', description: 'Short chart title' },
         unit: {
@@ -122,5 +115,6 @@ export const vizToolDefinitions = [
       },
       required: ['title', 'unit', 'options'],
     },
+    handler: rendered('show_comparison'),
   },
 ];

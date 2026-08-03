@@ -21,7 +21,7 @@ Probes that exercise the wiring:
 
 - `GET :8799/` returns the built `web/dist/index.html` (there is no SPA catch-all, so unknown paths 404).
 - `GET :8799/api/copilotkit/info` lists the registered agents, confirming agent id and class registration without an API call.
-- `POST :8799/api/copilotkit/agent/financial-assistant/run` with an AG-UI body (`{"threadId":"t1","runId":"r1","messages":[{"id":"m1","role":"user","content":"hi"}],"state":{},"tools":[],"context":[],"forwardedProps":{}}`) reaches sessions.ts and fails with a 401 from Anthropic. That 401 in the SSE `RUN_ERROR` proves the full route-to-SDK path.
+- `POST :8799/api/copilotkit/agent/financial-assistant/run` with an AG-UI body (`{"threadId":"t1","runId":"r1","messages":[{"id":"m1","role":"user","content":"hi"}],"state":{},"tools":[],"context":[],"forwardedProps":{}}`) reaches the AG-UI adapter and fails with a 401 from Anthropic. That 401 in the SSE `RUN_ERROR` proves the full route-to-SDK path.
 - CORS: send `OPTIONS` with an `Origin` header. With `ALLOWED_ORIGINS` set, allowed origins get `Access-Control-Allow-Origin` echoed and others get none.
 - `VITE_COPILOT_RUNTIME_URL=... npm run build` then grep `web/dist/assets` for the URL to confirm build-time baking.
 

@@ -12,3 +12,12 @@ Projects built on [Claude Managed Agents](https://platform.claude.com/docs/en/ma
   previews) while a live feed shows the tool calls. No third-party
   credentials, and the same handler moves to Slack, Teams, Discord,
   Telegram, or WhatsApp by swapping the adapter.
+
+- **[copilot-kit-ag-ui/](copilot-kit-ag-ui/)** puts a personal
+  finance assistant in a CopilotKit chat over the AG-UI protocol.
+  The upstream [`@ag-ui/claude-managed-agents`](https://www.npmjs.com/package/@ag-ui/claude-managed-agents)
+  adapter maps each chat thread to a managed session and streams
+  replies token by token; when the agent wants to show numbers it
+  calls custom tools that render as interactive charts (payoff
+  timelines, growth projections, budgets) inline in the
+  conversation, with sliders that recompute client-side.

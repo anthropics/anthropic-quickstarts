@@ -2,8 +2,9 @@
  * CopilotKit runtime hosting the managed-agent finance assistant.
  *
  * The browser's CopilotKitProvider talks to this endpoint; the runtime
- * dispatches each chat turn to the AG-UI agent in agent.ts, which drives a
- * Claude Managed Agents session (see bridge.ts for the event translation).
+ * dispatches each chat turn to a ManagedAgentsAgent from
+ * @ag-ui/claude-managed-agents, which maps the AG-UI thread to a Claude
+ * Managed Agents session and translates its events for CopilotKit.
  */
 import express from 'express';
 import fs from 'node:fs';
@@ -11,24 +12,47 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { CopilotSseRuntime } from '@copilotkit/runtime/v2';
 import { createCopilotExpressHandler } from '@copilotkit/runtime/v2/express';
-import { ManagedAgentFinancialAssistant } from './agent.ts';
+import {
+  InMemorySessionStore,
+  ManagedAgentsAgent,
+  type SessionStore,
+} from '@ag-ui/claude-managed-agents';
 import { loadAgentIds } from './setup.ts';
+import { vizTools } from './vizTools.ts';
 
 const PORT = Number(process.env.PORT ?? 8787);
 
 // Fail fast: a clear "run npm run setup first" at boot beats a mid-chat error.
-loadAgentIds();
+const ids = loadAgentIds();
 
-// Demo hardening: a stray rejection from an abandoned upstream stream must
-// not take the whole server down — log loudly and keep serving. Synchronous
-// exceptions still crash the process, as they should.
-process.on('unhandledRejection', (reason) => {
-  console.error('[fatal-averted] unhandled rejection:', reason);
-});
+// The default in-memory store, wrapped only to log each new session's Console
+// trace URL — the raw event history (every tool call and thinking span) is
+// worth watching next to the chat. `default` resolves to the session's actual
+// workspace when Console loads.
+const sessions = new InMemorySessionStore();
+const store: SessionStore = {
+  get: (key) => sessions.get(key),
+  set: (key, record) => {
+    if (sessions.get(key)?.sessionId !== record.sessionId) {
+      console.log(
+        `[session] ${record.sessionId}\n  trace: https://platform.claude.com/workspaces/default/sessions/${record.sessionId}`,
+      );
+    }
+    sessions.set(key, record);
+  },
+  delete: (key) => sessions.delete(key),
+};
 
 const runtime = new CopilotSseRuntime({
   agents: {
-    'financial-assistant': new ManagedAgentFinancialAssistant(),
+    'financial-assistant': new ManagedAgentsAgent({
+      managedAgentId: ids.agentId,
+      agentVersion: ids.agentVersion,
+      environmentId: ids.environmentId,
+      backendTools: vizTools,
+      sessionStore: store,
+      sessionTitle: (threadId) => `Finance assistant thread ${threadId}`,
+    }),
   },
 });
 

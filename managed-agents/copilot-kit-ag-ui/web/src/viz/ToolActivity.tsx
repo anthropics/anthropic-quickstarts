@@ -1,12 +1,10 @@
 /**
- * Transcript detail for the agent's built-in tool use and thinking.
+ * Transcript detail for the agent's built-in tool use.
  *
  * ToolActivity is the wildcard tool-call renderer: any tool without an exact
  * name match (bash, web_search, web_fetch, read, write, edit, glob, grep)
  * shows up as a compact row with a per-tool summary and a collapsible
- * args/result view. ThinkingActivity and SessionTraceActivity render the
- * activity messages the bridge emits for thinking spans and the Console
- * trace link.
+ * args/result view.
  */
 import React from 'react';
 
@@ -83,23 +81,3 @@ export const ToolActivity: React.FC<ToolActivityProps> = ({ name, status, args, 
     </details>
   );
 };
-
-export const ThinkingActivity: React.FC<{ content: { state?: string } }> = ({ content }) => (
-  <div className={`thinking-activity${content.state === 'thinking' ? ' active' : ''}`}>
-    <span className="thinking-activity-glyph">✦</span>
-    {content.state === 'thinking' ? 'Thinking…' : 'Thought for a moment'}
-  </div>
-);
-
-export const SessionTraceActivity: React.FC<{ content: { url?: string; sessionId?: string } }> = ({
-  content,
-}) =>
-  content.url ? (
-    <div className="trace-activity">
-      Managed Agents session <code>{content.sessionId}</code> ·{' '}
-      <a href={content.url} target="_blank" rel="noreferrer">
-        open the full trace in Console
-      </a>{' '}
-      (every tool call and thinking span)
-    </div>
-  ) : null;

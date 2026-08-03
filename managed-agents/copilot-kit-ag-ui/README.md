@@ -91,4 +91,6 @@ Platform notes:
 
 ## Architecture
 
+The Managed Agents ↔ AG-UI translation is the upstream [`@ag-ui/claude-managed-agents`](https://www.npmjs.com/package/@ag-ui/claude-managed-agents) package: one AG-UI thread per managed session, token streaming, tool activity, interrupts, and turn time caps all live there. This repo wires that adapter into a self-hosted CopilotKit runtime and renders the visual tools.
+
 See [CLAUDE.md](CLAUDE.md) for the architecture diagram, a map of where the interesting code is, and the design notes.
