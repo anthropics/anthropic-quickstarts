@@ -17,7 +17,17 @@ Projects built on [Claude Managed Agents](https://platform.claude.com/docs/en/ma
   finance assistant in a CopilotKit chat over the AG-UI protocol.
   The upstream [`@ag-ui/claude-managed-agents`](https://www.npmjs.com/package/@ag-ui/claude-managed-agents)
   adapter maps each chat thread to a managed session and streams
-  replies token by token; when the agent wants to show numbers it
+  replies token by token. When the agent wants to show numbers it
   calls custom tools that render as interactive charts (payoff
   timelines, growth projections, budgets) inline in the
   conversation, with sliders that recompute client-side.
+
+- **[knowledge-wiki/](knowledge-wiki/)** distills a document corpus
+  once into a knowledge wiki (a versioned memory store) using
+  parallel extraction sessions, a resolve pass, and a steered
+  consolidation dream (research-preview `client.beta.dreams`), then
+  answers repeated analyst questions from the wiki instead of
+  re-reading documents — with `[source | as-of]` provenance on every
+  fact and a fraction of the per-question token cost. The worked
+  example is a real M&A data room: the 2024 Squarespace / Permira
+  take-private, fetched from public SEC EDGAR filings.
