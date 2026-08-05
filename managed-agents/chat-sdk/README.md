@@ -6,7 +6,7 @@ The Chat SDK is a universal chat layer: one type-safe handler, 15+ adapters, fro
 
 The server stores nothing: the `useChat` conversation ID is a Managed Agents session ID. The sidebar is the sessions API. Transcripts replay from the session's event log. Compaction and prompt caching happen inside the session.
 
-Swapping a few lines in `src/bot.ts` moves the analyst to another surface: set up the platform's app following the [adapter docs](https://chat-sdk.dev/adapters), then see the porting notes (`skill.md`, "Two held streams, no webhooks"). Design notes live in [`CLAUDE.md`](./CLAUDE.md) and [`skill.md`](./skill.md).
+Swapping a few lines in `src/bot.ts` moves the analyst to another surface: set up the platform's app following the [adapter docs](https://chat-sdk.dev/adapters), then see the porting notes (`skill.md`, "Two held streams, no webhooks"). Design notes live in [`CLAUDE.md`](./CLAUDE.md) and [`skill.md`](./skill.md). Vercel's [knowledge base guide](https://vercel.com/kb/guide/claude-managed-agents-chat-sdk) covers the same integration from the Chat SDK side.
 
 ## Quickstart
 
