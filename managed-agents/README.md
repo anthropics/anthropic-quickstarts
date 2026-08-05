@@ -4,6 +4,16 @@ Projects built on [Claude Managed Agents](https://platform.claude.com/docs/en/ma
 
 ## Quickstarts
 
+- **[assistant-ui/](assistant-ui/)** puts a spreadsheet analyst in a
+  browser chat built entirely from assistant-ui primitives. Sessions are
+  the thread list and the only state: the sidebar is `sessions.list`, an
+  old chat is its event log replayed through one pure reducer, and every
+  built-in tool has its own card (a terminal for `bash`, source cards for
+  `web_search`, a diff for `edit`, a chart for the client-executed
+  `show_chart`). Bash is `always_ask`, so each command parks the session
+  and renders an inline Allow/Deny gate that survives a reload. Composer
+  attachments upload to the Files API and mount into the sandbox before
+  the message is sent. No third-party credentials.
 - **[chat-sdk/](chat-sdk/)** puts a research analyst in a
   browser chat with Vercel's Chat SDK. Each conversation is one
   persistent session (the conversation ID is the session ID); the

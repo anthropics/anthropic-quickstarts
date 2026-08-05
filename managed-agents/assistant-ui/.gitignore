@@ -1,0 +1,18 @@
+# dependencies
+/node_modules
+
+# next.js
+/.next/
+/out/
+
+# env files (the example is the only one that ships)
+.env*
+!.env.example
+
+# typescript
+*.tsbuildinfo
+next-env.d.ts
+
+# misc
+.DS_Store
+npm-debug.log*

@@ -1,0 +1,234 @@
+order_id,order_date,customer,region,product,quantity,unit_price,total
+ORD-10001,2025-01-02,Contoso Ltd,NA,Enterprise Seat,11,90.0,990.0
+ORD-10002,2025-01-19,Blue Yonder Airlines,NA,Analytics Suite,2,1200.0,2400.0
+ORD-10003,2025-01-03,Northwind Traders,EMEA,Data Connector,1,300.0,300.0
+ORD-10004,2025-01-08,Adventure Works,APAC,Enterprise Seat,2,90.0,180.0
+ORD-10005,2025-01-27,Blue Yonder Airlines,NA,Enterprise Seat,1,90.0,90.0
+ORD-10006,2025-01-21,northwind traders ,EMEA,Analytics Suite,1,1200.0,1200.0
+ORD-10007,2025-01-19,Woodgrove Bank,EMEA,Analytics Suite,3,1200.0,3600.0
+ORD-10008,2025-01-02,Adventure Works,APAC,Analytics Suite,1,1200.0,1200.0
+ORD-10009,2025-01-14,Lucerne Publishing,NA,Data Connector,5,300.0,1500.0
+ORD-10010,2025-01-10,Contoso Ltd,NA,Analytics Suite,3,1200.0,3600.0
+ORD-10011,2025-01-19,Lucerne Publishing,NA,Data Connector,2,300.0,600.0
+ORD-10012,2025-01-04,Woodgrove Bank,EMEA,Data Connector,6,300.0,1800.0
+ORD-10013,2025-01-02,Lucerne Publishing,NA,Analytics Suite,3,1200.0,3600.0
+ORD-10014,2025-01-22,Woodgrove Bank,EMEA,Data Connector,8,300.0,2400.0
+ORD-10015,2025-01-15,Lucerne Publishing,NA,Enterprise Seat,6,90.0,540.0
+ORD-10016,2025-01-10,Woodgrove Bank,EMEA,Enterprise Seat,6,90.0,540.0
+ORD-10017,2025-01-25,Fabrikam Inc,APAC,Data Connector,12,300.0,3600.0
+ORD-10018,2025-01-10,Fabrikam Inc,APAC,Analytics Suite,3,1200.0,3600.0
+ORD-10019,2025-01-24,Lucerne Publishing,NA,Enterprise Seat,6,90.0,540.0
+ORD-10020,2025-02-17,Tailspin Toys,NA,Analytics Suite,1,1224.0,1224.0
+ORD-10021,2025-02-05,Adventure Works,APAC,Data Connector,6,306.0,1836.0
+ORD-10022,2025-02-22,Coho Winery,EMEA,Enterprise Seat,1,91.8,91.8
+ORD-10023,2025-02-23,Blue Yonder Airlines,NA,Support Plan,6,153.0,918.0
+ORD-10024,2025-02-26,Wingtip Toys,EMEA,Enterprise Seat,10,91.8,918.0
+ORD-10025,2025-02-09,Coho Winery,EMEA,Analytics Suite,1,1224.0,1224.0
+ORD-10026,2025-02-24,Coho Winery,EMEA,Analytics Suite,1,1224.0,1224.0
+ORD-10027,2025-02-23,Tailspin Toys,NA,Enterprise Seat,5,91.8,459.0
+ORD-10028,2025-02-15,Adventure Works,APAC,Support Plan,1,153.0,153.0
+ORD-10029,2025-02-04,Wingtip Toys,EMEA,Data Connector,10,306.0,3060.0
+ORD-10030,2025-02-25,Coho Winery,EMEA,Analytics Suite,1,1224.0,1224.0
+ORD-10031,2025-02-08,Tailspin Toys,NA,Data Connector,12,306.0,3672.0
+ORD-10032,2025-02-03,Adventure Works,APAC,Enterprise Seat,8,91.8,734.4
+ORD-10033,2025-02-18,Contoso Ltd,NA,Enterprise Seat,7,91.8,642.6
+ORD-10034,2025-02-28,Tailspin Toys,NA,Data Connector,7,306.0,2142.0
+ORD-10035,2025-02-14,Lucerne Publishing,NA,Support Plan,12,153.0,1836.0
+ORD-10036,2025-02-05,Wingtip Toys,EMEA,Enterprise Seat,4,91.8,367.2
+ORD-10037,2025-02-08,Blue Yonder Airlines,NA,Data Connector,3,306.0,918.0
+ORD-10038,2025-02-27,Fabrikam Inc,APAC,Analytics Suite,2,1224.0,2448.0
+ORD-10039,2025-02-10,Woodgrove Bank,EMEA,Data Connector,5,306.0,1530.0
+ORD-10040,2025-02-18,Northwind Traders,EMEA,Data Connector,7,306.0,2142.0
+ORD-10041,2025-03-23,Woodgrove Bank,EMEA,Support Plan,3,156.0,
+ORD-10042,2025-03-28,Lucerne Publishing,NA,Analytics Suite,2,1248.0,2496.0
+ORD-10043,2025-03-13,Lucerne Publishing,NA,Enterprise Seat,7,93.6,655.2
+ORD-10044,2025-03-21,Adventure Works,APAC,Analytics Suite,2,1248.0,2496.0
+ORD-10045,2025-03-03,Adventure Works,APAC,Analytics Suite,1,1248.0,1248.0
+ORD-10046,2025-03-04,Fabrikam Inc,APAC,Enterprise Seat,3,93.6,280.8
+ORD-10047,2025-03-01,Wingtip Toys,EMEA,Analytics Suite,1,1248.0,1248.0
+ORD-10048,2025-03-04,Woodgrove Bank,EMEA,Data Connector,9,312.0,2808.0
+ORD-10049,2025-03-28,Wingtip Toys,EMEA,Analytics Suite,1,1248.0,1248.0
+ORD-10050,2025-03-21,Fabrikam Inc,APAC,Enterprise Seat,3,93.6,280.8
+ORD-10051,2025-03-12,Tailspin Toys,NA,Support Plan,10,156.0,1560.0
+ORD-10052,2025-03-28,Coho Winery,EMEA,Analytics Suite,1,1248.0,1248.0
+ORD-10053,2025-03-16,Coho Winery,EMEA,Enterprise Seat,8,93.6,748.8
+ORD-10054,2025-03-04,Tailspin Toys,NA,Analytics Suite,1,1248.0,1248.0
+ORD-10055,2025-03-27,Wingtip Toys,EMEA,Support Plan,8,156.0,1248.0
+ORD-10056,2025-03-17,Contoso Ltd,NA,Analytics Suite,1,1248.0,1248.0
+ORD-10057,2025-03-18,Wingtip Toys,EMEA,Data Connector,12,312.0,3744.0
+ORD-10058,2025-03-28,Northwind Traders,EMEA,Support Plan,11,156.0,1716.0
+ORD-10059,2025-03-12,Blue Yonder Airlines,NA,Support Plan,9,156.0,1404.0
+ORD-10060,2025-04-18,Wingtip Toys,EMEA,Data Connector,9,318.0,2862.0
+ORD-10061,2025-04-08,Lucerne Publishing,NA,Support Plan,11,159.0,1749.0
+ORD-10062,2025-04-27,Woodgrove Bank,EMEA,Data Connector,4,318.0,1272.0
+ORD-10063,2025-04-17,Adventure Works,APAC,Data Connector,4,318.0,1272.0
+ORD-10064,2025-04-01,Coho Winery,EMEA,Support Plan,12,159.0,1908.0
+ORD-10065,2025-04-09,Northwind Traders,EMEA,Support Plan,8,159.0,1272.0
+ORD-10066,2025-04-26,Fabrikam Inc,APAC,Support Plan,8,159.0,1272.0
+ORD-10067,2025-04-08,Wingtip Toys,EMEA,Support Plan,2,159.0,318.0
+ORD-10068,2025-04-07,Blue Yonder Airlines,NA,Data Connector,8,318.0,2544.0
+ORD-10069,2025-04-20,Wingtip Toys,EMEA,Data Connector,8,318.0,2544.0
+ORD-10070,2025-04-21,Woodgrove Bank,EMEA,Analytics Suite,2,1272.0,2544.0
+ORD-10071,2025-04-04,Wingtip Toys,EMEA,Analytics Suite,3,1272.0,3816.0
+ORD-10072,2025-04-06,Adventure Works,APAC,Data Connector,8,318.0,2544.0
+ORD-10073,2025-04-26,Adventure Works,APAC,Support Plan,2,159.0,318.0
+ORD-10074,2025-04-24,Adventure Works,APAC,Enterprise Seat,7,95.4,667.8
+ORD-10075,2025-04-05,Blue Yonder Airlines,NA,Data Connector,3,318.0,954.0
+ORD-10076,2025-05-05,Contoso Ltd,NA,Enterprise Seat,11,97.2,1069.2
+ORD-10077,2025-05-12,Woodgrove Bank,EMEA,Enterprise Seat,11,97.2,1069.2
+ORD-10078,2025-05-01,Contoso Ltd,NA,Data Connector,-2,324.0,324.0
+ORD-10079,2025-05-28,Blue Yonder Airlines,NA,Data Connector,7,324.0,2268.0
+ORD-10080,2025-05-09,Fabrikam Inc,APAC,Data Connector,1,324.0,324.0
+ORD-10081,2025-05-08,Fabrikam Inc,APAC,Support Plan,9,162.0,1458.0
+ORD-10082,2025-05-18,Woodgrove Bank,EMEA,Support Plan,5,162.0,810.0
+ORD-10083,2025-05-24,Adventure Works,APAC,Data Connector,1,324.0,324.0
+ORD-10084,2025-05-19,Wingtip Toys,EMEA,Enterprise Seat,11,97.2,1069.2
+ORD-10085,2025-05-05,Lucerne Publishing,NA,Enterprise Seat,9,97.2,874.8
+ORD-10086,2025-05-17,Lucerne Publishing,NA,Data Connector,9,324.0,2916.0
+ORD-10087,2025-05-20,Northwind Traders,EMEA,Enterprise Seat,3,97.2,291.6
+ORD-10088,2025-05-05,Northwind Traders,EMEA,Data Connector,3,324.0,972.0
+ORD-10089,2025-05-02,Coho Winery,EMEA,Analytics Suite,3,1296.0,3888.0
+ORD-10090,2025-06-18,Lucerne Publishing,NA,Enterprise Seat,2,99.0,198.0
+ORD-10091,2025-06-09,Northwind Traders,EMEA,Data Connector,4,330.0,1320.0
+ORD-10092,2025-06-15,Northwind Traders,EMEA,Analytics Suite,3,1320.0,3960.0
+ORD-10093,2025-06-15,Lucerne Publishing,NA,Analytics Suite,1,1320.0,1320.0
+ORD-10094,2025-06-09,Wingtip Toys,EMEA,Data Connector,12,330.0,3960.0
+ORD-10095,2025-06-08,Coho Winery,EMEA,Enterprise Seat,9,99.0,891.0
+ORD-10096,2025-06-07,Lucerne Publishing,NA,Support Plan,9,165.0,1485.0
+ORD-10097,2025-06-04,Coho Winery,EMEA,Data Connector,7,330.0,2310.0
+ORD-10098,2025-06-03,Adventure Works,APAC,Enterprise Seat,6,99.0,594.0
+ORD-10099,2025-06-07,Fabrikam Inc,APAC,Enterprise Seat,2,99.0,198.0
+ORD-10100,2025-06-23,Tailspin Toys,NA,Analytics Suite,1,1320.0,1320.0
+ORD-10101,2025-06-05,Wingtip Toys,EMEA,Data Connector,5,330.0,1650.0
+ORD-10102,2025-06-04,Coho Winery,EMEA,Data Connector,12,330.0,3960.0
+ORD-10103,2025-06-22,Adventure Works,APAC,Enterprise Seat,3,99.0,297.0
+ORD-10104,2025-06-14,Fabrikam Inc,APAC,Data Connector,12,330.0,3960.0
+ORD-10105,2025-06-14,Lucerne Publishing,NA,Enterprise Seat,6,99.0,594.0
+ORD-10106,2025-06-03,Fabrikam Inc,APAC,Support Plan,6,165.0,990.0
+ORD-10107,2025-06-18,Wingtip Toys,EMEA,Analytics Suite,2,1320.0,2640.0
+ORD-10108,2025-06-01,Coho Winery,EMEA,Enterprise Seat,12,99.0,1188.0
+ORD-10109,2025-07-03,Wingtip Toys,EMEA,Support Plan,9,168.0,1512.0
+ORD-10110,2025-07-03,Blue Yonder Airlines,NA,Data Connector,2,336.0,672.0
+ORD-10111,2025-07-25,Tailspin Toys,NA,Support Plan,1,168.0,168.0
+ORD-10112,2025-07-27,Contoso Ltd,NA,Support Plan,3,168.0,504.0
+ORD-10113,2025-07-05,Adventure Works,APAC,Support Plan,7,168.0,1176.0
+ORD-10114,2025-07-11,Lucerne Publishing,NA,Enterprise Seat,12,100.8,1209.6
+ORD-10115,2025-07-26,Blue Yonder Airlines,NA,Support Plan,1,168.0,168.0
+ORD-10116,2025-07-09,Contoso Ltd,NA,Enterprise Seat,2,100.8,201.6
+ORD-10117,2025-07-03,Northwind Traders,EMEA,Analytics Suite,2,1344.0,2688.0
+ORD-10118,2025-07-09,Woodgrove Bank,EMEA,Data Connector,2,336.0,672.0
+ORD-10119,2025-07-11,Blue Yonder Airlines,NA,Enterprise Seat,1,100.8,100.8
+ORD-10120,2025-07-20,Lucerne Publishing,NA,Enterprise Seat,5,100.8,504.0
+ORD-10121,2025-07-23,Contoso Ltd,NA,Analytics Suite,3,1344.0,4032.0
+ORD-10122,2025-07-09,Fabrikam Inc,APAC,Analytics Suite,1,1344.0,1344.0
+ORD-10123,2025-07-10,Northwind Traders,EMEA,Data Connector,4,336.0,1344.0
+ORD-10124,2025-07-15,Tailspin Toys,NA,Data Connector,5,336.0,1680.0
+ORD-10125,2025-07-12,Lucerne Publishing,NA,Data Connector,5,336.0,1680.0
+ORD-10126,2025-07-01,Northwind Traders,EMEA,Support Plan,1,168.0,168.0
+ORD-10127,2025-07-16,Northwind Traders,EMEA,Data Connector,9,336.0,3024.0
+ORD-10128,2025-07-22,Fabrikam Inc,APAC,Enterprise Seat,2,100.8,201.6
+ORD-10129,2025-08-10,Coho Winery,EMEA,Enterprise Seat,9,102.6,923.4
+ORD-10130,2025-08-07,Fabrikam Inc,APAC,Data Connector,6,342.0,2052.0
+ORD-10131,2025-08-02,Contoso Ltd,NA,Enterprise Seat,6,102.6,615.6
+ORD-10132,2025-08-21,Contoso Ltd,NA,Analytics Suite,1,1368.0,1368.0
+ORD-10133,2025-08-02,Tailspin Toys,NA,Enterprise Seat,3,102.6,307.8
+ORD-10134,2025-08-22,Blue Yonder Airlines,NA,Enterprise Seat,9,102.6,923.4
+ORD-10135,2025-08-10,Tailspin Toys,NA,Data Connector,12,342.0,4104.0
+ORD-10136,2025-08-06,Northwind Traders,EMEA,Enterprise Seat,3,102.6,307.8
+ORD-10137,2025-08-09,Tailspin Toys,NA,Enterprise Seat,1,102.6,102.6
+ORD-10138,2025-08-11,Wingtip Toys,EMEA,Support Plan,9,171.0,1539.0
+ORD-10139,2025-08-07,Fabrikam Inc,APAC,Analytics Suite,2,1368.0,2736.0
+ORD-10140,2025-08-11,Wingtip Toys,EMEA,Data Connector,1,342.0,342.0
+ORD-10141,2025-08-09,Adventure Works,APAC,Analytics Suite,2,1368.0,2736.0
+ORD-10142,2025-08-17,Lucerne Publishing,NA,Data Connector,4,342.0,1368.0
+ORD-10143,2025-08-27,Northwind Traders,EMEA,Analytics Suite,2,1368.0,2736.0
+ORD-10144,2025-08-19,Blue Yonder Airlines,NA,Data Connector,7,342.0,2394.0
+ORD-10145,2025-08-10,Northwind Traders,EMEA,Enterprise Seat,1,102.6,102.6
+ORD-10146,2025-08-19,Tailspin Toys,NA,Data Connector,2,342.0,684.0
+ORD-10147,2025-08-23,Lucerne Publishing,NA,Data Connector,11,342.0,3762.0
+ORD-10148,2025-08-24,Woodgrove Bank,EMEA,Enterprise Seat,6,102.6,615.6
+ORD-10149,2025-09-20,Contoso Ltd,NA,Support Plan,12,174.0,2088.0
+ORD-10150,2025-09-17,Contoso Ltd,NA,Analytics Suite,3,1392.0,4176.0
+ORD-10151,2025-09-25,Adventure Works,APAC,Data Connector,9,348.0,3132.0
+ORD-10152,2025-09-19,Lucerne Publishing,NA,Analytics Suite,3,1392.0,4176.0
+ORD-10153,2025-09-02,Fabrikam Inc,APAC,Analytics Suite,1,1392.0,1392.0
+ORD-10154,2025-09-13,Contoso Ltd,NA,Support Plan,2,174.0,348.0
+ORD-10155,2025-09-01,Coho Winery,EMEA,Analytics Suite,3,1392.0,4176.0
+ORD-10156,2025-09-09,Lucerne Publishing,NA,Data Connector,8,348.0,2784.0
+ORD-10157,2025-09-24,Northwind Traders,EMEA,Enterprise Seat,2,104.4,208.8
+ORD-10158,2025-09-17,Lucerne Publishing,NA,Analytics Suite,3,1392.0,4176.0
+ORD-10159,2025-09-26,Blue Yonder Airlines,NA,Enterprise Seat,5,104.4,522.0
+ORD-10160,2025-09-24,Blue Yonder Airlines,NA,Support Plan,4,174.0,696.0
+ORD-10161,2025-09-21,Fabrikam Inc,APAC,Data Connector,12,348.0,4176.0
+ORD-10162,2025-09-03,Coho Winery,EMEA,Enterprise Seat,7,104.4,730.8
+ORD-10163,2025-09-20,Coho Winery,EMEA,Support Plan,1,174.0,174.0
+ORD-10164,2025-09-05,Fabrikam Inc,APAC,Analytics Suite,3,1392.0,4176.0
+ORD-10165,2025-09-24,Wingtip Toys,EMEA,Support Plan,11,174.0,1914.0
+ORD-10166,2025-09-16,Tailspin Toys,NA,Data Connector,1,348.0,348.0
+ORD-10167,2025-09-22,Northwind Traders,EMEA,Enterprise Seat,5,104.4,522.0
+ORD-10168,2025-09-16,Blue Yonder Airlines,NA,Data Connector,11,348.0,3828.0
+ORD-10169,2025-09-15,Tailspin Toys,NA,Support Plan,8,174.0,1392.0
+ORD-10170,2025-10-03,Blue Yonder Airlines,NA,Data Connector,5,354.0,1770.0
+ORD-10171,2025-10-15,Coho Winery,EMEA,Analytics Suite,2,1416.0,2832.0
+ORD-10172,2025-10-13,Blue Yonder Airlines,NA,Enterprise Seat,5,106.2,531.0
+ORD-10173,2025-10-19,Fabrikam Inc,APAC,Data Connector,2,354.0,708.0
+ORD-10174,2025-10-17,Blue Yonder Airlines,NA,Data Connector,12,354.0,4248.0
+ORD-10175,2025-10-20,Tailspin Toys,NA,Support Plan,3,177.0,531.0
+ORD-10176,2025-10-23,Lucerne Publishing,NA,Support Plan,2,177.0,354.0
+ORD-10177,2025-10-16,Wingtip Toys,EMEA,Data Connector,8,354.0,2832.0
+ORD-10178,2025-10-01,Adventure Works,APAC,Analytics Suite,1,1416.0,1416.0
+ORD-10179,2025-10-10,Coho Winery,EMEA,Enterprise Seat,7,106.2,743.4
+ORD-10180,2025-10-13,Contoso Ltd,NA,Enterprise Seat,6,106.2,637.2
+ORD-10181,2025-10-01,Wingtip Toys,EMEA,Analytics Suite,2,1416.0,2832.0
+ORD-10182,2025-10-04,Wingtip Toys,EMEA,Support Plan,7,177.0,1239.0
+ORD-10183,2025-10-10,Fabrikam Inc,APAC,Analytics Suite,3,1416.0,4248.0
+ORD-10184,2025-10-13,Tailspin Toys,NA,Support Plan,2,177.0,354.0
+ORD-10185,2025-10-14,Adventure Works,APAC,Analytics Suite,2,1416.0,2832.0
+ORD-10186,2025-10-04,Tailspin Toys,NA,Analytics Suite,2,1416.0,2832.0
+ORD-10187,2025-10-05,Northwind Traders,EMEA,Support Plan,11,177.0,1947.0
+ORD-10188,2025-10-17,Fabrikam Inc,APAC,Support Plan,7,177.0,1239.0
+ORD-10189,2025-10-26,Wingtip Toys,EMEA,Data Connector,6,354.0,2124.0
+ORD-10190,2025-10-13,Adventure Works,APAC,Analytics Suite,3,1416.0,4248.0
+ORD-10191,2025-11-03,Lucerne Publishing,NA,Data Connector,12,414.0,4968.0
+ORD-10192,2025-11-20,Northwind Traders,EMEA,Enterprise Seat,8,124.2,993.6
+ORD-10193,2025-11-02,Contoso Ltd,NA,Support Plan,8,207.0,1656.0
+ORD-10194,2025-11-16,Lucerne Publishing,NA,Data Connector,3,414.0,1242.0
+ORD-10195,2025-11-10,Adventure Works,APAC,Support Plan,5,207.0,1035.0
+ORD-10196,2025-11-21,Tailspin Toys,NA,Support Plan,7,207.0,1449.0
+ORD-10197,2025-11-18,Fabrikam Inc,APAC,Support Plan,8,207.0,1656.0
+ORD-10198,2025-11-21,Adventure Works,APAC,Analytics Suite,1,1656.0,1656.0
+ORD-10199,2025-11-17,Contoso Ltd,NA,Analytics Suite,1,1656.0,1656.0
+ORD-10200,2025-11-11,Coho Winery,EMEA,Data Connector,8,414.0,3312.0
+ORD-10201,2025-11-18,Coho Winery,EMEA,Enterprise Seat,3,124.2,372.6
+ORD-10202,2025-11-06,Fabrikam Inc,APAC,Data Connector,2,414.0,828.0
+ORD-10203,2025-11-08,Wingtip Toys,EMEA,Analytics Suite,2,1656.0,3312.0
+ORD-10204,2025-11-07,Wingtip Toys,EMEA,Support Plan,10,207.0,2070.0
+ORD-10205,2025-11-14,Northwind Traders,EMEA,Enterprise Seat,7,124.2,869.4
+ORD-10206,2025-11-09,Lucerne Publishing,NA,Data Connector,7,414.0,2898.0
+ORD-10207,2025-11-09,Wingtip Toys,EMEA,Analytics Suite,2,1656.0,3312.0
+ORD-10208,2025-11-22,Woodgrove Bank,EMEA,Support Plan,3,207.0,621.0
+ORD-10209,2025-11-09,Lucerne Publishing,NA,Data Connector,2,414.0,828.0
+ORD-10210,2025-11-21,Fabrikam Inc,APAC,Enterprise Seat,7,124.2,869.4
+ORD-10211,2025-11-28,Coho Winery,EMEA,Enterprise Seat,5,124.2,621.0
+ORD-10212,2025-11-14,Northwind Traders,EMEA,Data Connector,1,414.0,414.0
+ORD-10213,2025-12-03,Woodgrove Bank,EMEA,Enterprise Seat,1,126.27,126.27
+ORD-10214,2025-12-08,Adventure Works,APAC,Enterprise Seat,8,126.27,1010.16
+ORD-10215,2025-12-05,Blue Yonder Airlines,NA,Data Connector,3,420.9,1262.7
+ORD-10216,2025-12-23,Lucerne Publishing,NA,Analytics Suite,3,1683.6,5050.8
+ORD-10217,2025-12-25,Coho Winery,EMEA,Analytics Suite,3,1683.6,5050.8
+ORD-10218,2025-12-08,Northwind Traders,EMEA,Analytics Suite,1,1683.6,1683.6
+ORD-10219,2025-12-23,Woodgrove Bank,EMEA,Analytics Suite,3,1683.6,5050.8
+ORD-10220,2025-12-09,Tailspin Toys,NA,Data Connector,11,420.9,4629.9
+ORD-10221,2025-12-25,Lucerne Publishing,NA,Enterprise Seat,12,126.27,1515.24
+ORD-10222,2025-12-10,Blue Yonder Airlines,NA,Analytics Suite,1,1683.6,1683.6
+ORD-10223,2025-12-09,Lucerne Publishing,NA,Data Connector,7,420.9,2946.3
+ORD-10224,2025-12-18,Fabrikam Inc,APAC,Analytics Suite,1,1683.6,1683.6
+ORD-10225,2025-12-11,Tailspin Toys,NA,Enterprise Seat,5,126.27,631.35
+ORD-10226,2025-12-08,Fabrikam Inc,APAC,Enterprise Seat,9,126.27,1136.43
+ORD-10227,2025-12-14,Lucerne Publishing,NA,Data Connector,1,420.9,420.9
+ORD-10228,2025-12-07,Tailspin Toys,NA,Analytics Suite,1,1683.6,1683.6
+ORD-10229,2025-12-09,Coho Winery,EMEA,Enterprise Seat,2,126.27,252.54
+ORD-10230,2025-12-08,Fabrikam Inc,APAC,Enterprise Seat,6,126.27,757.62
+ORD-10231,2025-12-11,Coho Winery,EMEA,Analytics Suite,3,1683.6,5050.8
+ORD-10232,2025-12-13,Adventure Works,APAC,Support Plan,11,210.45,2314.95
+ORD-10233,2025-12-24,Fabrikam Inc,APAC,Analytics Suite,2,1683.6,3367.2
