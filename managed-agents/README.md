@@ -41,3 +41,12 @@ Projects built on [Claude Managed Agents](https://platform.claude.com/docs/en/ma
   fact and a fraction of the per-question token cost. The worked
   example is a real M&A data room: the 2024 Squarespace / Permira
   take-private, fetched from public SEC EDGAR filings.
+
+- **[self-hosted-sandboxes/](self-hosted-sandboxes/)** runs sessions
+  on hardware you control. A self-hosted environment is a work queue:
+  a host process polls it with the environment key and starts one
+  short-lived Docker container per claimed session. `docker/` is the
+  all-CLI baseline; `docker-memory/` runs the Python SDK worker in the
+  container so each session mounts a memory store at `/mnt/memory`
+  and syncs it back, and keeps the environment key out of the
+  containers with a per-session token.
