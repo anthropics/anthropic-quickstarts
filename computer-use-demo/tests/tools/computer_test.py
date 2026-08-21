@@ -244,7 +244,7 @@ def zoom_capture(tmp_path):
     async def fake_run(command):
         commands.append(command)
         # The output path is the last token of the convert command.
-        Path(command.split()[-1]).write_bytes(b"zoomed")
+        Path(command.split()[-1]).write_bytes(b"zoomed")  # noqa: ASYNC240
         return 0, "", ""
 
     with (
