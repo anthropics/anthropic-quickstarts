@@ -1,4 +1,50 @@
 [tool.pyright]
-venvPath = "computer-use-demo"
+venvPath = "."
 venv = ".venv"
+include = ["backend", "shared", "tests"]
 useLibraryCodeForTypes = false
+
+[tool.pytest.ini_options]
+pythonpath = "."
+asyncio_mode = "auto"
+testpaths = ["tests"]
+
+[tool.ruff]
+# Everything inherited from the quickstarts fork is excluded. computer-use-demo
+# carries its own ruff.toml; the rest are kept for reference only.
+extend-exclude = [
+    ".venv",
+    "agents",
+    "autonomous-coding",
+    "browser-use-demo",
+    "computer-use-best-practices",
+    "computer-use-demo",
+    "customer-support-agent",
+    "financial-data-analyst",
+    "managed-agents",
+]
+# Matches the Python pinned in the computer-use-demo image, which the worker
+# inherits.
+target-version = "py311"
+
+[tool.ruff.format]
+docstring-code-format = true
+
+[tool.ruff.lint]
+select = [
+    "A",
+    "ASYNC",
+    "B",
+    "E",
+    "F",
+    "I",
+    "PIE",
+    "RUF200",
+    "T20",
+    "UP",
+    "W",
+]
+ignore = ["E501", "ASYNC230"]
+
+[tool.ruff.lint.isort]
+combine-as-imports = true

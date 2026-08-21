@@ -1,4 +1,4 @@
-files: ^computer-use-demo/
+files: ^(computer-use-demo|backend|shared|tests)/
 default_stages: [pre-commit, pre-push]
 repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
@@ -22,3 +22,6 @@ repos:
     rev: v1.1.384
     hooks:
       - id: pyright
+        # Scoped to the upstream stack: the hook builds its own environment and
+        # would not see the backend's dependencies.
+        files: ^computer-use-demo/
