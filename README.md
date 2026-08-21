@@ -22,7 +22,7 @@ A financial data analyst powered by Claude. This project demonstrates how to lev
 
 ### Computer Use Demo
 
-An environment and tools that Claude can use to control a desktop computer. This project demonstrates how to leverage the computer use capabilities of Claude, including support for the latest `computer_use_20251124` tool version with zoom actions.
+An environment and tools that Claude can use to control a desktop computer. This project demonstrates how to leverage the computer use capabilities of Claude, including support for the latest `computer_toolset_20260801` toolset shape, where each computer action is a member tool the model calls by name.
 
 [Go to Computer Use Demo Quickstart](./computer-use-demo)
 

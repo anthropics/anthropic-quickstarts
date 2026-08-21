@@ -61,19 +61,126 @@ def test_type_text_handles_non_ascii(captured):
     assert "".join(captured["unicode"]) == "café — naïve"
 
 
-def test_hosted_param_reports_resized_dimensions(monkeypatch):
+def test_hosted_dated_param_reports_resized_dimensions(monkeypatch):
     """Tool params are built before any screenshot, so __init__ must compute
     the post-resize size up front rather than defaulting to raw screen size."""
     # 1512x982 is a common MacBook logical size; exceeds the token budget so
     # screenshots get downscaled.
     monkeypatch.setattr(computer.pyautogui, "size", lambda: (1512, 982))
     tool = computer.ComputerTool()
-    p = tool.to_hosted_param()
+    p = tool.to_hosted_dated_param()
     assert (p["display_width_px"], p["display_height_px"]) != (1512, 982)
     assert (p["display_width_px"], p["display_height_px"]) == (tool.sent_w, tool.sent_h)
     from computer_use.image import target_image_size
 
     assert (tool.sent_w, tool.sent_h) == target_image_size(1512, 982)
+
+
+@pytest.fixture
+def gui(monkeypatch):
+    """Record every pyautogui call the tool makes, in order, without touching
+    the real desktop."""
+    calls: list[tuple[str, tuple, dict]] = []
+    for fn in (
+        "moveTo",
+        "click",
+        "dragTo",
+        "scroll",
+        "hscroll",
+        "keyDown",
+        "keyUp",
+        "hotkey",
+        "mouseDown",
+        "mouseUp",
+    ):
+        monkeypatch.setattr(
+            computer.pyautogui, fn, lambda *a, _fn=fn, **k: calls.append((_fn, a, k))
+        )
+    monkeypatch.setattr(computer.pyautogui, "size", lambda: (1024, 768))
+    return calls
+
+
+def _names(calls):
+    return [c[0] for c in calls]
+
+
+def test_click_without_coordinate_clicks_where_the_cursor_is(gui):
+    """Toolset members declare `coordinate` optional; the dated hosted schema
+    and the explicit schema follow the same convention."""
+    res = computer.ComputerTool().execute(action="left_click")
+    assert not res.is_error
+    assert _names(gui) == ["click"]
+    assert "at the cursor" in (res.output or "")
+
+
+def test_click_with_coordinate_moves_first(gui):
+    computer.ComputerTool().execute(action="right_click", coordinate=[10, 20])
+    assert _names(gui) == ["moveTo", "click"]
+    assert gui[1][2]["button"] == "right"
+
+
+def test_click_holds_modifiers_around_the_click(gui):
+    computer.ComputerTool().execute(action="left_click", coordinate=[1, 1], text="shift+command")
+    assert _names(gui) == ["moveTo", "keyDown", "keyDown", "click", "keyUp", "keyUp"]
+    assert [c[1][0] for c in gui if c[0] == "keyDown"] == ["shift", "command"]
+    assert [c[1][0] for c in gui if c[0] == "keyUp"] == ["command", "shift"]
+
+
+def test_drag_and_scroll_accept_modifiers(gui):
+    tool = computer.ComputerTool()
+    tool.execute(action="left_click_drag", start_coordinate=[0, 0], coordinate=[5, 5], text="alt")
+    assert _names(gui) == ["moveTo", "keyDown", "dragTo", "keyUp"]
+    gui.clear()
+    tool.execute(action="scroll", scroll_direction="down", scroll_amount=2, text="shift")
+    assert _names(gui) == ["keyDown", "scroll", "keyUp"]
+    assert gui[1][1] == (-2,)
+
+
+def test_unmapped_modifier_is_an_error_before_any_input(gui):
+    res = computer.ComputerTool().execute(action="left_click", coordinate=[1, 1], text="insert")
+    assert res.is_error and "insert" in (res.error or "")
+    assert gui == []
+
+
+def test_mouse_down_up_without_coordinate_stay_put(gui):
+    tool = computer.ComputerTool()
+    tool.execute(action="left_mouse_down")
+    tool.execute(action="left_mouse_up", coordinate=[3, 4])
+    assert _names(gui) == ["mouseDown", "moveTo", "mouseUp"]
+
+
+def test_actions_that_need_a_coordinate_say_so(gui):
+    tool = computer.ComputerTool()
+    assert "coordinate" in (tool.execute(action="mouse_move").error or "")
+    assert "start_coordinate" in (
+        tool.execute(action="left_click_drag", coordinate=[1, 1]).error or ""
+    )
+    assert gui == []
+
+
+def test_key_repeat(gui):
+    res = computer.ComputerTool().execute(action="key", text="ctrl+t", repeat=3)
+    assert _names(gui) == ["hotkey"] * 3
+    assert gui[0][1] == ("ctrl", "t")
+    assert res.output == "pressed ctrl+t x3"
+
+
+def test_key_defaults_to_a_single_press(gui):
+    res = computer.ComputerTool().execute(action="key", text="enter")
+    assert _names(gui) == ["hotkey"]
+    assert res.output == "pressed enter"
+
+
+@pytest.mark.parametrize("repeat", [0, 101, "3", 2.0])
+def test_key_repeat_out_of_range_is_an_error(gui, repeat):
+    res = computer.ComputerTool().execute(action="key", text="a", repeat=repeat)
+    assert res.is_error and "repeat" in (res.error or "")
+    assert gui == []
+
+
+def test_explicit_schema_declares_repeat_within_the_toolset_bounds():
+    prop = computer.ComputerTool.input_schema["properties"]["repeat"]
+    assert (prop["minimum"], prop["maximum"]) == (1, computer.KEY_REPEAT_MAX) == (1, 100)
 
 
 def test_hold_key_releases_on_interrupt(monkeypatch):

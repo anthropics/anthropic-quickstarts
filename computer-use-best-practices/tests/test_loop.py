@@ -1,4 +1,5 @@
 from types import SimpleNamespace
+from typing import Any, ClassVar
 
 import anthropic
 import httpx
@@ -8,10 +9,17 @@ from anthropic.types import ImageBlockParam, MessageParam
 from computer_use.formatters import StripOldestImages
 from computer_use.loop import (
     _call_with_retry,
+    _execute_tool_uses,
     _format_usage,
+    _interrupted_result,
     _is_empty_response,
     _is_recoverable,
+    _should_nudge_batch,
+    _tool_result_block,
 )
+from computer_use.tools.base import Tool, ToolCollection
+from computer_use.tools.result import ToolResult
+from constants import TOOLSET_NOT_EXECUTED
 
 
 def _img() -> ImageBlockParam:
@@ -133,3 +141,92 @@ def test_effort_unsupported_model_raises() -> None:
     with pytest.raises(ValueError, match=r"does not support output_config\.effort"):
         _effort_kwargs("claude-haiku-4-5", "medium")
     assert _effort_kwargs("claude-haiku-4-5", "off") == {"thinking": {"type": "disabled"}}
+
+
+class _Recorder(Tool):
+    """Fails any call whose action is "boom"; records what reached execute()."""
+
+    description = "test double"
+    input_schema: ClassVar[dict[str, Any]] = {"type": "object", "properties": {}}
+    validates_own_input = True
+    calls: ClassVar[list[tuple[str, str]]] = []
+
+    def execute(self, **kwargs: Any) -> ToolResult:
+        action = kwargs.get("action", "?")
+        _Recorder.calls.append((self.name, action))
+        return ToolResult(error="boom") if action == "boom" else ToolResult(output="ok")
+
+
+class _Computer(_Recorder):
+    name = "computer"
+
+
+class _Browser(_Recorder):
+    name = "browser"
+
+
+@pytest.fixture
+def tools():
+    _Recorder.calls.clear()
+    return ToolCollection(_Computer(), _Browser())
+
+
+def _member(name: str, id_: str = "toolu") -> SimpleNamespace:
+    # What the SDK hands back for a hosted-toolset member call: the action is
+    # the tool name, the family rides in toolset_name, the input has no action.
+    return SimpleNamespace(id=id_, name=name, toolset_name="computer", input={})
+
+
+def _plain(name: str, action: str, id_: str = "toolu") -> SimpleNamespace:
+    return SimpleNamespace(id=id_, name=name, input={"action": action})
+
+
+def test_execute_runs_members_in_order_and_stops_after_the_first_failure(tools):
+    uses = [_member("left_click", "1"), _member("boom", "2"), _member("type", "3")]
+
+    out = list(_execute_tool_uses(tools, uses))
+
+    assert [(tu.id, res.is_error) for tu, res in out] == [("1", False), ("2", True), ("3", True)]
+    assert out[2][1].error == TOOLSET_NOT_EXECUTED
+    # The third member was answered without being run.
+    assert _Recorder.calls == [("computer", "left_click"), ("computer", "boom")]
+
+
+def test_execute_member_failure_does_not_stop_ordinary_tools(tools):
+    uses = [_member("boom", "1"), _plain("browser", "navigate", "2"), _member("key", "3")]
+
+    out = list(_execute_tool_uses(tools, uses))
+
+    assert [res.is_error for _, res in out] == [True, False, True]
+    assert _Recorder.calls == [("computer", "boom"), ("browser", "navigate")]
+
+
+def test_execute_ordinary_failures_do_not_trip_the_member_short_circuit(tools):
+    uses = [_plain("computer", "boom", "1"), _member("screenshot", "2")]
+
+    out = list(_execute_tool_uses(tools, uses))
+
+    assert [res.is_error for _, res in out] == [True, False]
+    assert _Recorder.calls == [("computer", "boom"), ("computer", "screenshot")]
+
+
+def test_tool_result_block_stamps_toolset_name_only_on_member_results():
+    member = _tool_result_block(_member("zoom", "m"), [], is_error=False)
+    plain = _tool_result_block(_plain("computer", "zoom", "p"), [], is_error=False)
+
+    assert member["toolset_name"] == "computer" and member["tool_use_id"] == "m"  # type: ignore[typeddict-item]
+    assert "toolset_name" not in plain and plain["tool_use_id"] == "p"
+
+
+def test_interrupted_result_keeps_member_results_api_valid():
+    block = _interrupted_result(_member("wait"))
+    assert block["is_error"] is True and block["toolset_name"] == "computer"  # type: ignore[typeddict-item]
+    assert "toolset_name" not in _interrupted_result(_plain("bash", "run"))
+
+
+def test_batch_nudge_treats_a_lone_member_call_like_a_lone_action():
+    assert _should_nudge_batch([_plain("computer", "left_click")])
+    assert _should_nudge_batch([_member("left_click")])
+    assert not _should_nudge_batch([_member("screenshot")])
+    assert not _should_nudge_batch([_member("left_click"), _member("type")])
+    assert not _should_nudge_batch([_plain("computer_batch", "left_click")])

@@ -33,6 +33,12 @@ Please use [this form](https://forms.gle/BT1hpBrqDPDUrCqo7) to provide feedback 
 > [!IMPORTANT]
 > The components are weakly separated: the agent loop runs in the container being controlled by Claude, can only be used by one session at a time, and must be restarted or reset between sessions if necessary.
 
+## Tool versions
+
+The demo supports every dated version of the Anthropic-defined computer use tools, selectable in the app's sidebar. The sidebar defaults to the version matching the selected model.
+
+The most recent shape, `computer_toolset_20260801`, declares the computer tool as a *toolset*: a single nameless entry in `tools[]` that declares one member tool per computer action. The model then calls each action as its own tool — `tool_use.name` is the member name (`left_click`, `screenshot`, ...), the block carries `toolset_name: "computer"`, and the input is that action's parameters with no `action` discriminator. Every `tool_result` answering a member call carries the same `toolset_name`, member calls in a turn run sequentially and stop on the first failure, and the toolset requires no `anthropic-beta` header. Earlier dated versions of the tool (API types `computer_20241022` through `computer_20251124`, the sidebar's `computer_use_*` entries) keep the single `computer` tool with an `action` parameter and their respective beta headers. A model supports either the toolset or the earlier dated versions it was trained with — check the [computer use documentation](https://docs.claude.com/en/docs/agents-and-tools/computer-use) for each model's supported versions.
+
 ## Quickstart: running the Docker container
 
 ### Claude API

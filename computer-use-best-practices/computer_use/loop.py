@@ -3,8 +3,9 @@ The agent loop.
 
 Streams `client.messages.stream` against the configured provider (Anthropic,
 Vertex, or Bedrock). Tools are explicit by default; with
-`cfg.use_hosted_computer_tool` the `computer` tool is sent as the
-server-hosted type instead. Renders thinking/text/tool-calls
+`cfg.use_hosted_computer_tool` the `computer` tool is declared as the
+server-hosted toolset instead (the dated tool on Vertex/Bedrock), and its
+member calls are routed back into the same executor. Renders thinking/text/tool-calls
 to the terminal as they arrive, adds prompt caching on the system block and the
 trailing user turn, bounds the screenshot history (cache-aware), retries
 recoverable API errors with backoff, recovers from empty responses, and nudges
@@ -14,8 +15,8 @@ the model toward batch tools when it issues a lone single-action call.
 import random
 import sys
 import time
-from collections.abc import Callable
-from typing import Any, TypeVar
+from collections.abc import Callable, Iterator
+from typing import Any, TypeVar, cast
 
 import anthropic
 from anthropic.lib.bedrock import AnthropicBedrock
@@ -39,6 +40,7 @@ from constants import (
     EFFORT_SUPPORTED_MODELS,
     PROVIDER_MAX_MESSAGE_MB,
     SYSTEM_PROMPT,
+    TOOLSET_NOT_EXECUTED,
     Provider,
     ThinkingEffort,
     cfg,
@@ -46,7 +48,7 @@ from constants import (
 
 from . import render
 from .formatters import StripImagesAtIntervals, StripOldestImages
-from .tools import ToolCollection
+from .tools import ToolCollection, ToolResult
 from .trajectory import Trajectory
 
 T = TypeVar("T")
@@ -307,25 +309,72 @@ def _stream_and_render(
         return stream.get_final_message()
 
 
+def _toolset_name(tool_use: Any) -> str | None:
+    """The family a hosted-toolset member call belongs to ("computer"), or None
+    for an ordinary tool call. The SDK keeps the field on the parsed block even
+    though its types predate it, so plain attribute access works."""
+    return getattr(tool_use, "toolset_name", None)
+
+
 def _should_nudge_batch(tool_uses: list[Any]) -> bool:
     """Only nudge after a lone click/type/key/scroll/wait, not after
-    screenshots or batch calls (which is what the model is told to do anyway)."""
+    screenshots or batch calls (which is what the model is told to do anyway).
+    A lone toolset member call is the same single action, just spelled as the
+    tool name instead of `input.action`."""
     if len(tool_uses) != 1:
         return False
     tu = tool_uses[0]
+    if _toolset_name(tu) is not None:
+        return tu.name in BATCH_REMINDER_ACTIONS
     if tu.name not in {"computer", "browser"}:
         return False
     action = tu.input.get("action") if isinstance(tu.input, dict) else None
     return action in BATCH_REMINDER_ACTIONS
 
 
-def _interrupted_result(tool_use_id: str) -> ToolResultBlockParam:
-    return {
+def _execute_tool_uses(
+    tools: ToolCollection, tool_uses: list[Any]
+) -> Iterator[tuple[Any, ToolResult]]:
+    """Run a turn's tool_use blocks in order, yielding each with its result.
+
+    Hosted-toolset member calls follow the toolset contract: they run
+    sequentially in block order, and once one fails the rest of the turn's
+    member calls are answered with TOOLSET_NOT_EXECUTED instead of running
+    (the model's later actions assumed the failed one succeeded). Ordinary
+    tools are unaffected. A generator so the caller can still fill in results
+    for whatever remains if the user interrupts mid-turn.
+    """
+    member_failed = False
+    for tu in tool_uses:
+        toolset = _toolset_name(tu)
+        if toolset is not None and member_failed:
+            res = ToolResult(error=TOOLSET_NOT_EXECUTED)
+        else:
+            res = tools.run(tu.name, tu.input, toolset_name=toolset)
+            if toolset is not None and res.is_error:
+                member_failed = True
+        yield tu, res
+
+
+def _tool_result_block(tool_use: Any, content: list[Any], is_error: bool) -> ToolResultBlockParam:
+    """A tool_result answering a member call must carry the same toolset_name
+    as its tool_use (the API rejects a mismatch either way); ordinary results
+    must not carry one."""
+    block: dict[str, Any] = {
         "type": "tool_result",
-        "tool_use_id": tool_use_id,
-        "is_error": True,
-        "content": [{"type": "text", "text": "[interrupted by user]"}],
+        "tool_use_id": tool_use.id,
+        "is_error": is_error,
+        "content": content,
     }
+    if (toolset := _toolset_name(tool_use)) is not None:
+        block["toolset_name"] = toolset
+    return cast(ToolResultBlockParam, block)
+
+
+def _interrupted_result(tool_use: Any) -> ToolResultBlockParam:
+    return _tool_result_block(
+        tool_use, [{"type": "text", "text": "[interrupted by user]"}], is_error=True
+    )
 
 
 def sampling_loop(
@@ -357,9 +406,8 @@ def sampling_loop(
         thinking_effort = cfg.thinking_effort.get(model, cfg.default_thinking_effort)
     effort_kwargs = _effort_kwargs(model, thinking_effort)
 
-    client_tool_params: list[Any] = list(
-        tools.to_params(hosted_computer=cfg.use_hosted_computer_tool)
-    )
+    hosted_computer = cfg.hosted_computer
+    client_tool_params: list[Any] = list(tools.to_params(hosted_computer=hosted_computer))
     prune = _make_image_pruner(PROVIDER_MAX_MESSAGE_MB[cfg.provider])
 
     advisor_enabled = cfg.enable_advisor_tool
@@ -392,7 +440,8 @@ def sampling_loop(
 
             tool_params = client_tool_params + ([_advisor_tool_param()] if advisor_enabled else [])
             betas: list[str] = []
-            if cfg.use_hosted_computer_tool:
+            # Only the dated hosted tool is header-gated; the toolset is GA.
+            if hosted_computer == "dated":
                 betas.append(COMPUTER_USE_BETA)
             if advisor_enabled:
                 betas.append(ADVISOR_BETA)
@@ -469,8 +518,7 @@ def sampling_loop(
             nudge = _should_nudge_batch(tool_uses)
             results: list[ToolResultBlockParam] = []
             try:
-                for tu in tool_uses:
-                    res = tools.run(tu.name, tu.input)
+                for tu, res in _execute_tool_uses(tools, tool_uses):
                     render.tool_result(tu.name, res)
                     content = res.to_api_content()
                     if nudge and not res.is_error:
@@ -479,20 +527,13 @@ def sampling_loop(
                         content.append({"type": "text", "text": ADVISOR_REMINDER})
                         advisor_nudge = False
                         turns_since_advisor = 0
-                    results.append(
-                        {
-                            "type": "tool_result",
-                            "tool_use_id": tu.id,
-                            "is_error": res.is_error,
-                            "content": content,
-                        }
-                    )
+                    results.append(_tool_result_block(tu, content, res.is_error))
             except KeyboardInterrupt:
                 render.interrupted()
                 done_ids = {r["tool_use_id"] for r in results}
                 for tu in tool_uses:
                     if tu.id not in done_ids:
-                        results.append(_interrupted_result(tu.id))
+                        results.append(_interrupted_result(tu))
                 messages.append({"role": "user", "content": results})
                 trajectory.record("user", results)
                 break

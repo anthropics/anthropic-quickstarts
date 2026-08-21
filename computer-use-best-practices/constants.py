@@ -58,11 +58,32 @@ PROVIDER_MAX_MESSAGE_MB: dict[Provider, int | None] = {
     "bedrock": 11,
 }
 
-# Hosted (Anthropic-defined) computer-use tool. Newer dated revisions exist;
-# this is the GA-adjacent one. When cfg.use_hosted_computer_tool is true, the
-# computer tool is sent as this server-side type instead of an explicit schema.
-HOSTED_COMPUTER_TOOL_TYPE = "computer_20250124"
+# Hosted (Anthropic-defined) computer-use tool, used when
+# cfg.use_hosted_computer_tool is true (see Config.hosted_computer).
+#
+# On the first-party API the current shape is the computer *toolset*: one
+# nameless {"type": ...} entry declaring a member tool per action. The model
+# calls each action as its own tool -- tool_use.name is the action name, the
+# block carries toolset_name="computer", and the input has no `action` field --
+# so the loop routes member calls back into the explicit ComputerTool by
+# (toolset_name, name). It is GA: no beta header, and no display_* fields (they
+# are rejected; coordinates are exchanged in screenshot pixels regardless).
+HOSTED_COMPUTER_TOOLSET_TYPE = "computer_toolset_20260801"
+HOSTED_COMPUTER_TOOLSET_NAME = "computer"
+# The exact text the toolset contract prescribes for member calls that were not
+# run because an earlier member call in the same turn failed.
+TOOLSET_NOT_EXECUTED = "Not executed: an earlier computer action in this turn failed."
+
+# Vertex and Bedrock do not serve the toolset yet, so on those providers hosted
+# mode falls back to the last dated single-tool shape, which needs its beta
+# header. The model then calls it as name="computer" with input.action, i.e.
+# exactly the explicit tool's shape.
+HOSTED_COMPUTER_DATED_TYPE = "computer_20250124"
 COMPUTER_USE_BETA = "computer-use-2025-01-24"
+
+# How the `computer` tool is declared to the API: the explicit schema in
+# computer_use/tools/computer.py, the hosted toolset, or the hosted dated tool.
+HostedComputer = Literal["explicit", "toolset", "dated"]
 
 
 @dataclass(frozen=True)
@@ -73,12 +94,13 @@ class Config:
     # AWS_REGION).
     provider: Provider = "anthropic"
 
-    # Send the computer tool as the server-hosted {"type":"computer_YYYYMMDD"}
-    # param instead of the explicit schema in computer_use/tools/computer.py.
+    # Send the computer tool as the server-hosted declaration (the toolset on
+    # the first-party API, the dated tool elsewhere -- see `hosted_computer`)
+    # instead of the explicit schema in computer_use/tools/computer.py.
     # Opting in engages the API's computer-use-specific safety classifiers
     # (including prompt-injection detection on screenshots); the explicit-schema
-    # default does not. Only the `computer` tool changes; batch/browser/etc.
-    # remain explicit.
+    # default does not. Only the `computer` declaration changes; execution,
+    # batch/browser/etc. remain explicit and client-side.
     use_hosted_computer_tool: bool = False
 
     # Additional model IDs accepted by --model (older or beta models not in the
@@ -220,6 +242,15 @@ class Config:
                     f"support {'it' if len(first_party_only) == 1 else 'them'}. "
                     f"Set {joined} to False, or set provider='anthropic'."
                 )
+
+    @property
+    def hosted_computer(self) -> HostedComputer:
+        """Which declaration of the `computer` tool to send. The toolset is
+        served by the first-party API only; Vertex and Bedrock keep the dated
+        tool until they gain toolset parity."""
+        if not self.use_hosted_computer_tool:
+            return "explicit"
+        return "toolset" if self.provider == "anthropic" else "dated"
 
     def with_overrides(self, **overrides: Any) -> "Config":
         coerced = {k: _coerce(type(self), k, v) for k, v in overrides.items()}

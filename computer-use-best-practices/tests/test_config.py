@@ -1,5 +1,7 @@
 import textwrap
 
+import pytest
+
 from constants import Config, _coerce
 
 
@@ -65,3 +67,24 @@ def test_coerce_dict_field_from_string_errors_clearly() -> None:
 
     with pytest.raises(ValueError, match="dict-typed"):
         _coerce(Config, "thinking_effort", "high")
+
+
+@pytest.mark.parametrize(
+    "provider,hosted,expected",
+    [
+        ("anthropic", False, "explicit"),
+        ("vertex", False, "explicit"),
+        ("anthropic", True, "toolset"),
+        # The toolset is first-party only; other providers keep the dated tool.
+        ("vertex", True, "dated"),
+        ("bedrock", True, "dated"),
+    ],
+)
+def test_hosted_computer_declaration_follows_provider(provider, hosted, expected) -> None:
+    c = Config(
+        provider=provider,
+        use_hosted_computer_tool=hosted,
+        enable_advisor_tool=False,
+        enable_autocompaction=False,
+    )
+    assert c.hosted_computer == expected

@@ -84,13 +84,21 @@ def test_browser_key_normalization():
     assert _to_playwright_chord("F5") == "F5"
 
 
-def test_computer_tool_hosted_param():
+def test_computer_tool_hosted_toolset_param_is_a_bare_type():
     from computer_use.tools.computer import ComputerTool
-    from constants import HOSTED_COMPUTER_TOOL_TYPE
+    from constants import HOSTED_COMPUTER_TOOLSET_TYPE
 
-    t = ComputerTool()
-    p = t.to_hosted_param()
-    assert p["type"] == HOSTED_COMPUTER_TOOL_TYPE
+    # The toolset entry is nameless and takes no display size: the API rejects
+    # both, and coordinates are in screenshot pixels regardless.
+    assert ComputerTool().to_hosted_toolset_param() == {"type": HOSTED_COMPUTER_TOOLSET_TYPE}
+
+
+def test_computer_tool_hosted_dated_param():
+    from computer_use.tools.computer import ComputerTool
+    from constants import HOSTED_COMPUTER_DATED_TYPE
+
+    p = ComputerTool().to_hosted_dated_param()
+    assert p["type"] == HOSTED_COMPUTER_DATED_TYPE
     assert p["name"] == "computer"
     assert isinstance(p["display_width_px"], int) and p["display_width_px"] > 0
     assert isinstance(p["display_height_px"], int) and p["display_height_px"] > 0
@@ -101,8 +109,62 @@ def test_tool_collection_hosted_computer_swap():
     from computer_use.tools.computer import ComputerTool
 
     tc = ToolCollection(ComputerTool())
-    explicit = tc.to_params(hosted_computer=False)[0]
-    hosted = tc.to_params(hosted_computer=True)[0]
+    explicit = tc.to_params()[0]
+    toolset = tc.to_params(hosted_computer="toolset")[0]
+    dated = tc.to_params(hosted_computer="dated")[0]
     assert "input_schema" in explicit
-    assert "input_schema" not in hosted
-    assert hosted["type"].startswith("computer_")
+    assert toolset == {"type": "computer_toolset_20260801"}
+    assert dated["type"] == "computer_20250124" and "input_schema" not in dated
+
+
+def test_hosted_swap_leaves_other_tools_explicit():
+    from computer_use.tools.base import ToolCollection
+    from computer_use.tools.batch import ComputerBatchTool
+    from computer_use.tools.computer import ComputerTool
+
+    computer = ComputerTool()
+    params = ToolCollection(computer, ComputerBatchTool(computer)).to_params(
+        hosted_computer="toolset"
+    )
+    assert [p.get("name") for p in params] == [None, "computer_batch"]
+    assert "input_schema" in params[1]
+
+
+class _Recording(Tool):
+    name = "computer"
+    description = "records execute() kwargs"
+    input_schema: ClassVar[dict[str, Any]] = {"type": "object", "properties": {}}
+    validates_own_input = True
+
+    def __init__(self) -> None:
+        self.calls: list[dict[str, Any]] = []
+
+    def execute(self, **kwargs: Any) -> ToolResult:
+        self.calls.append(kwargs)
+        return ToolResult(output="ok")
+
+
+def test_run_routes_toolset_member_calls_by_family():
+    """A member call names the action as the tool and the family in
+    toolset_name; it must reach the family's tool with the action folded back
+    into the input, i.e. exactly what an explicit call would have passed."""
+    from computer_use.tools.base import ToolCollection
+
+    tool = _Recording()
+    tc = ToolCollection(tool)
+
+    res = tc.run("left_click", {"coordinate": [1, 2]}, toolset_name="computer")
+    assert not res.is_error
+    assert tool.calls == [{"coordinate": [1, 2], "action": "left_click"}]
+
+    tc.run("computer", {"action": "screenshot"})
+    assert tool.calls[-1] == {"action": "screenshot"}
+
+
+def test_run_unknown_toolset_or_tool_is_an_error_result():
+    from computer_use.tools.base import ToolCollection
+
+    tc = ToolCollection(_Recording())
+    assert tc.run("navigate", {}, toolset_name="browser").error == "Unknown toolset: browser"
+    assert tc.run("browser", {"action": "navigate"}).error == "Unknown tool: browser"
+    assert "must be an object" in (tc.run("left_click", [], toolset_name="computer").error or "")

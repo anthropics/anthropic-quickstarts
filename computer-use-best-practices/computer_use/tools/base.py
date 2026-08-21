@@ -19,6 +19,8 @@ from typing import Any, ClassVar
 
 from anthropic.types import ToolParam
 
+from constants import HOSTED_COMPUTER_TOOLSET_NAME, HostedComputer
+
 from .result import ToolResult
 
 
@@ -76,14 +78,16 @@ class ToolCollection:
     def __getitem__(self, name: str) -> Tool:
         return self._tools[name]
 
-    def to_params(self, *, hosted_computer: bool = False) -> list[Any]:
+    def to_params(self, *, hosted_computer: HostedComputer = "explicit") -> list[Any]:
+        """Tool params for the API. `hosted_computer` swaps only the `computer`
+        tool's *declaration* for the server-hosted one (see
+        constants.HostedComputer); every tool still executes here."""
         params: list[Any] = []
         for t in self._tools.values():
-            hosted = getattr(t, "to_hosted_param", None)
-            if hosted_computer and t.name == "computer" and callable(hosted):
-                params.append(hosted())
-            else:
-                params.append(t.to_param())
+            hosted = None
+            if t.name == HOSTED_COMPUTER_TOOLSET_NAME and hosted_computer != "explicit":
+                hosted = getattr(t, f"to_hosted_{hosted_computer}_param", None)
+            params.append(hosted() if callable(hosted) else t.to_param())
         return params
 
     def close(self) -> None:
@@ -96,14 +100,27 @@ class ToolCollection:
                 with contextlib.suppress(Exception):
                     close()
 
-    def run(self, name: str, tool_input: object) -> ToolResult:
-        tool = self._tools.get(name)
-        if tool is None:
-            return ToolResult(error=f"Unknown tool: {name}")
+    def run(self, name: str, tool_input: object, *, toolset_name: str | None = None) -> ToolResult:
+        """Execute one tool_use block.
+
+        A hosted-toolset member call arrives with `toolset_name` set (the tool
+        family, e.g. "computer") and `name` set to the action; it is routed to
+        the family's explicit tool with the action folded back into the input,
+        so members and explicit `{action: ...}` calls share one implementation.
+        """
         if not isinstance(tool_input, dict):
             return ToolResult(
                 error=f"tool input must be an object, got {type(tool_input).__name__}"
             )
+        if toolset_name is not None:
+            tool = self._tools.get(toolset_name)
+            if tool is None:
+                return ToolResult(error=f"Unknown toolset: {toolset_name}")
+            tool_input = {**tool_input, "action": name}
+        else:
+            tool = self._tools.get(name)
+            if tool is None:
+                return ToolResult(error=f"Unknown tool: {name}")
         try:
             return tool.execute(**tool_input)
         except Exception as e:

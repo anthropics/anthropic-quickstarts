@@ -1,7 +1,12 @@
 from .base import CLIResult, ToolResult
 from .bash import BashTool20241022, BashTool20250124
 from .collection import ToolCollection
-from .computer import ComputerTool20241022, ComputerTool20250124
+from .computer import (
+    ComputerTool20241022,
+    ComputerTool20250124,
+    ComputerTool20251124,
+    ComputerToolset20260801,
+)
 from .edit import EditTool20250728
 from .groups import TOOL_GROUPS_BY_VERSION, ToolVersion
 
@@ -11,6 +16,8 @@ __ALL__ = [
     CLIResult,
     ComputerTool20241022,
     ComputerTool20250124,
+    ComputerTool20251124,
+    ComputerToolset20260801,
     EditTool20250728,
     TOOL_GROUPS_BY_VERSION,
     ToolCollection,

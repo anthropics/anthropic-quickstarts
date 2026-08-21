@@ -227,22 +227,10 @@ class BaseComputerTool:
 
     async def screenshot(self):
         """Take a screenshot of the current screen and return the base64 encoded image."""
-        output_dir = Path(OUTPUT_DIR)
-        await asyncio.to_thread(output_dir.mkdir, parents=True, exist_ok=True)
-        path = output_dir / f"screenshot_{uuid4().hex}.png"
-
-        # Try gnome-screenshot first
-        if shutil.which("gnome-screenshot"):
-            screenshot_cmd = f"{self._display_prefix}gnome-screenshot -f {path} -p"
-        else:
-            # Fall back to scrot if gnome-screenshot isn't available
-            screenshot_cmd = f"{self._display_prefix}scrot -p {path}"
-
-        result = await self.shell(screenshot_cmd, take_screenshot=False)
+        path = await self._new_output_path("screenshot")
+        result = await self._capture(path)
         if self._scaling_enabled:
-            x, y = self.scale_coordinates(
-                ScalingSource.COMPUTER, self.width, self.height
-            )
+            x, y = self.screenshot_size()
             await self.shell(
                 f"convert {path} -resize {x}x{y}! {path}", take_screenshot=False
             )
@@ -252,6 +240,29 @@ class BaseComputerTool:
                 base64_image=base64.b64encode(path.read_bytes()).decode()
             )
         raise ToolError(f"Failed to take screenshot: {result.error}")
+
+    def screenshot_size(self) -> tuple[int, int]:
+        """The dimensions of the screenshots sent to the model.
+
+        This is the coordinate frame the model emits coordinates in; it differs
+        from the physical display whenever scaling applies.
+        """
+        return self.scale_coordinates(ScalingSource.COMPUTER, self.width, self.height)
+
+    async def _new_output_path(self, prefix: str) -> Path:
+        output_dir = Path(OUTPUT_DIR)
+        await asyncio.to_thread(output_dir.mkdir, parents=True, exist_ok=True)
+        return output_dir / f"{prefix}_{uuid4().hex}.png"
+
+    async def _capture(self, path: Path) -> ToolResult:
+        """Capture the display at physical resolution into `path`."""
+        # Try gnome-screenshot first
+        if shutil.which("gnome-screenshot"):
+            screenshot_cmd = f"{self._display_prefix}gnome-screenshot -f {path} -p"
+        else:
+            # Fall back to scrot if gnome-screenshot isn't available
+            screenshot_cmd = f"{self._display_prefix}scrot -p {path}"
+        return await self.shell(screenshot_cmd, take_screenshot=False)
 
     async def shell(self, command: str, take_screenshot=True) -> ToolResult:
         """Run a shell command and return the output, error, and optionally a screenshot."""
@@ -446,37 +457,9 @@ class ComputerTool20251124(ComputerTool20250124):
             if not all(isinstance(c, int) and c >= 0 for c in region):
                 raise ToolError(f"{region=} must contain non-negative integers")
 
-            x0, y0, x1, y1 = region
-            # Scale coordinates from API space to screen space
-            x0, y0 = self.scale_coordinates(ScalingSource.API, x0, y0)
-            x1, y1 = self.scale_coordinates(ScalingSource.API, x1, y1)
-
-            # Take a screenshot and crop to the specified region
-            screenshot_result = await self.screenshot()
-            if not screenshot_result.base64_image:
-                raise ToolError("Failed to take screenshot for zoom")
-
-            # Crop the image using ImageMagick convert
-            output_dir = Path(OUTPUT_DIR)
-            temp_path = output_dir / f"screenshot_{uuid4().hex}.png"
-            cropped_path = output_dir / f"zoomed_{uuid4().hex}.png"
-
-            # Write the screenshot to a temp file
-            temp_path.write_bytes(base64.b64decode(screenshot_result.base64_image))
-
-            # Crop using ImageMagick: convert input -crop WxH+X+Y output
-            width = x1 - x0
-            height = y1 - y0
-            crop_cmd = f"convert {temp_path} -crop {width}x{height}+{x0}+{y0} +repage {cropped_path}"
-            await run(crop_cmd)
-
-            if cropped_path.exists():
-                cropped_base64 = base64.b64encode(cropped_path.read_bytes()).decode()
-                temp_path.unlink(missing_ok=True)
-                cropped_path.unlink(missing_ok=True)
-                return ToolResult(base64_image=cropped_base64)
-
-            raise ToolError("Failed to crop screenshot for zoom")
+            if region[2] <= region[0] or region[3] <= region[1]:
+                raise ToolError(f"{region=} must satisfy x0 < x1 and y0 < y1")
+            return await self.zoom(region)
 
         return await super().__call__(
             action=action,
@@ -488,3 +471,158 @@ class ComputerTool20251124(ComputerTool20250124):
             key=key,
             **kwargs,
         )
+
+    async def zoom(self, region: tuple[int, int, int, int]) -> ToolResult:
+        """Return a magnified capture of `region`, given in screenshot pixels.
+
+        The region is mapped onto a physical-resolution capture (so the crop
+        carries more detail than the same area of a scaled-down screenshot) and
+        the crop is then resized, aspect preserved, to fit within the
+        screenshot frame: one axis fills it, the other is at most as large.
+        The model keeps emitting coordinates in screenshot pixels afterwards;
+        the zoom image itself is never a coordinate frame.
+        """
+        # scale_coordinates(API, ...) also bounds-checks against the display.
+        x0, y0 = self.scale_coordinates(ScalingSource.API, region[0], region[1])
+        x1, y1 = self.scale_coordinates(ScalingSource.API, region[2], region[3])
+        frame_w, frame_h = self.screenshot_size()
+
+        raw_path = await self._new_output_path("zoom_raw")
+        zoom_path = await self._new_output_path("zoom")
+        capture = await self._capture(raw_path)
+        if not raw_path.exists():
+            raise ToolError(f"Failed to take screenshot for zoom: {capture.error}")
+        try:
+            # +repage drops the crop offset so the resize sees a plain image;
+            # a bare WxH geometry resizes to fit within the frame, aspect kept.
+            await run(
+                f"convert {raw_path} -crop {x1 - x0}x{y1 - y0}+{x0}+{y0} +repage "
+                f"-resize {frame_w}x{frame_h} {zoom_path}"
+            )
+            if not zoom_path.exists():
+                raise ToolError("Failed to crop screenshot for zoom")
+            return ToolResult(
+                base64_image=base64.b64encode(zoom_path.read_bytes()).decode()
+            )
+        finally:
+            raw_path.unlink(missing_ok=True)
+            zoom_path.unlink(missing_ok=True)
+
+
+# The member tools of computer_toolset_20260801, one per trained action: the
+# trained action names are the member names, and the model calls each member
+# as its own tool (tool_use.name is the member name). The member set is fixed
+# per dated version; a later version's new members arrive only with a new
+# dated type.
+COMPUTER_TOOLSET_MEMBERS: frozenset[str] = frozenset(
+    [
+        "key",
+        "hold_key",
+        "type",
+        "cursor_position",
+        "mouse_move",
+        "left_mouse_down",
+        "left_mouse_up",
+        "left_click",
+        "left_click_drag",
+        "right_click",
+        "middle_click",
+        "double_click",
+        "triple_click",
+        "scroll",
+        "wait",
+        "screenshot",
+        "zoom",
+    ]
+)
+
+KEY_REPEAT_MIN = 1
+KEY_REPEAT_MAX = 100
+
+
+class ComputerToolset20260801(ComputerTool20251124):
+    """The computer toolset (`computer_toolset_20260801`).
+
+    Where earlier dated versions declare a single "computer" tool and receive
+    every action through its `action` parameter, the toolset is declared as
+    one nameless `tools[]` entry and the model calls each action as its own
+    member tool: `tool_use.name` is the member name (`left_click`,
+    `screenshot`, ...), the block carries `toolset_name: "computer"`, and the
+    input is that action's parameter set with no `action` discriminator.
+    Every tool_result answering a member call must carry the same
+    `toolset_name` (see `loop._make_api_tool_result`).
+
+    Member semantics match the corresponding actions of
+    `computer_20251124`, with three differences:
+
+    * `zoom` is an always-declared member (enabled by default) instead of an
+      `enable_zoom` opt-in flag.
+    * `key` accepts an optional `repeat` count (1-100).
+    * Pointer members (clicks, drags) spell a held modifier chord `text`,
+      where `computer_20250124` spelled it `key`.
+
+    A turn may carry several member tool_use blocks; the caller executes them
+    sequentially in block order and stops on the first failure (see
+    `loop.sampling_loop`). Coordinates stay in screenshot pixels, as before.
+    """
+
+    api_type: Literal["computer_toolset_20260801"] = "computer_toolset_20260801"  # pyright: ignore[reportIncompatibleVariableOverride]
+    toolset_name: Literal["computer"] = "computer"
+    member_names: frozenset[str] = COMPUTER_TOOLSET_MEMBERS
+
+    def to_params(self):
+        # The toolset entry is nameless and carries no display_* options (the
+        # API rejects them): coordinates are exchanged in screenshot pixels,
+        # so the display geometry travels in the screenshots themselves. Per-
+        # member overrides could be declared here via "configs"; this demo
+        # keeps every member at its default (all enabled).
+        return cast(BetaToolUnionParam, {"type": self.api_type})
+
+    async def __call__(
+        self,
+        *,
+        action: Action_20251124,
+        text: str | None = None,
+        repeat: int | None = None,
+        **kwargs,
+    ):
+        if action not in self.member_names:
+            raise ToolError(f"Invalid member tool: {action}")
+
+        if action == "key" and repeat is not None:
+            if text is None:
+                raise ToolError(f"text is required for {action}")
+            if (
+                not isinstance(repeat, int)
+                or not KEY_REPEAT_MIN <= repeat <= KEY_REPEAT_MAX
+            ):
+                raise ToolError(
+                    f"{repeat=} must be an integer between {KEY_REPEAT_MIN} and {KEY_REPEAT_MAX}"
+                )
+            keys = " ".join([shlex.quote(text)] * repeat)
+            return await self.shell(f"{self.xdotool} key -- {keys}")
+
+        if action in CLICK_BUTTONS and text is not None:
+            # The toolset spells the held modifier chord "text"; the
+            # implementation inherited from ComputerTool20250124 spells it
+            # "key" on click actions.
+            return await super().__call__(action=action, key=text, **kwargs)
+
+        if action == "left_click_drag" and text is not None:
+            start_coordinate = kwargs.pop("start_coordinate", None)
+            coordinate = kwargs.pop("coordinate", None)
+            if start_coordinate is None or coordinate is None:
+                raise ToolError(
+                    f"start_coordinate and coordinate are required for {action}"
+                )
+            start_x, start_y = self.validate_and_get_coordinates(start_coordinate)
+            end_x, end_y = self.validate_and_get_coordinates(coordinate)
+            escaped_keys = shlex.quote(text)
+            return await self.shell(
+                f"{self.xdotool} keydown {escaped_keys} "
+                f"mousemove --sync {start_x} {start_y} mousedown 1 "
+                f"mousemove --sync {end_x} {end_y} mouseup 1 "
+                f"keyup {escaped_keys}"
+            )
+
+        return await super().__call__(action=action, text=text, **kwargs)

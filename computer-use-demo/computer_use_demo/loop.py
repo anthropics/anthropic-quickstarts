@@ -35,6 +35,12 @@ from .tools import (
     ToolResult,
     ToolVersion,
 )
+from .tools.base import ToolFailure
+
+# The tool_result content a toolset member call receives when an earlier
+# member call in the same turn failed (the exact text is part of the computer
+# toolset contract).
+NOT_EXECUTED_ERROR = "Not executed: an earlier computer action in this turn failed."
 
 PROMPT_CACHING_BETA_FLAG = "prompt-caching-2024-07-31"
 
@@ -189,6 +195,7 @@ async def sampling_loop(
         )
 
         tool_result_content: list[BetaToolResultBlockParam] = []
+        member_call_failed = False
         for content_block in response_params:
             output_callback(content_block)
             if (
@@ -197,12 +204,31 @@ async def sampling_loop(
             ):
                 # Type narrowing for tool use blocks
                 tool_use_block = cast(BetaToolUseBlockParam, content_block)
-                result = await tool_collection.run(
-                    name=tool_use_block["name"],
-                    tool_input=cast(dict[str, Any], tool_use_block.get("input", {})),
+                # A toolset member call carries toolset_name naming its
+                # family; its tool_result must carry the same toolset_name.
+                toolset_name = cast(
+                    str | None,
+                    cast(dict[str, Any], content_block).get("toolset_name"),
                 )
+                if toolset_name is not None and member_call_failed:
+                    # Toolset member calls run sequentially in block order and
+                    # stop on the first failure; the remaining member calls
+                    # are answered without being executed.
+                    result: ToolResult = ToolFailure(error=NOT_EXECUTED_ERROR)
+                else:
+                    result = await tool_collection.run(
+                        name=tool_use_block["name"],
+                        tool_input=cast(
+                            dict[str, Any], tool_use_block.get("input", {})
+                        ),
+                        toolset_name=toolset_name,
+                    )
+                    if toolset_name is not None and result.error:
+                        member_call_failed = True
                 tool_result_content.append(
-                    _make_api_tool_result(result, tool_use_block["id"])
+                    _make_api_tool_result(
+                        result, tool_use_block["id"], toolset_name=toolset_name
+                    )
                 )
                 tool_output_callback(result, tool_use_block["id"])
 
@@ -311,9 +337,13 @@ def _inject_prompt_caching(
 
 
 def _make_api_tool_result(
-    result: ToolResult, tool_use_id: str
+    result: ToolResult, tool_use_id: str, *, toolset_name: str | None = None
 ) -> BetaToolResultBlockParam:
-    """Convert an agent ToolResult to an API ToolResultBlockParam."""
+    """Convert an agent ToolResult to an API ToolResultBlockParam.
+
+    A tool_result answering a toolset member call must carry the same
+    toolset_name as its paired tool_use block, so it is stamped here.
+    """
     tool_result_content: list[BetaTextBlockParam | BetaImageBlockParam] | str = []
     is_error = False
     if result.error:
@@ -338,12 +368,15 @@ def _make_api_tool_result(
                     },
                 }
             )
-    return {
+    tool_result_block: dict[str, Any] = {
         "type": "tool_result",
         "content": tool_result_content,
         "tool_use_id": tool_use_id,
         "is_error": is_error,
     }
+    if toolset_name is not None:
+        tool_result_block["toolset_name"] = toolset_name
+    return cast(BetaToolResultBlockParam, tool_result_block)
 
 
 def _maybe_prepend_system_tool_result(result: ToolResult, result_text: str):

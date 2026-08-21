@@ -290,18 +290,43 @@ reference implementation.
 
 The trade-off is safety classifier coverage. The API runs computer-use-specific
 safety classifiers (including prompt-injection detection on screenshot
-content) **only** when the request declares the hosted
-`{"type": "computer_YYYYMMDD", ...}` tool. With the explicit schema, your
-request is on the generic safety path and you must rely on your own
-prompt-injection mitigations (the system prompt's instructions, the VM
-isolation recommended at the top of this README, and your own monitoring).
+content) **only** when the request declares the Anthropic-defined computer
+tool. With the explicit schema, your request is on the generic safety path and
+you must rely on your own prompt-injection mitigations (the system prompt's
+instructions, the VM isolation recommended at the top of this README, and your
+own monitoring).
 
 If you want those classifiers without giving up the rest of the demo, set
 `cfg.use_hosted_computer_tool = True` (or `CU_USE_HOSTED_COMPUTER_TOOL=true`).
-The loop will send the hosted `computer` tool param (the server supplies its
-description and schema) while keeping `computer_batch`, `browser`, `bash`, and
-the rest as explicit tools. Execution stays client-side either way; only the
-tool *declaration* changes.
+Only the `computer` tool's *declaration* changes; `computer_batch`, `browser`,
+`bash`, and the rest stay explicit, and every tool still executes here.
+
+On the first-party API the hosted declaration is the computer **toolset**,
+`{"type": "computer_toolset_20260801"}` — a single nameless entry that
+declares one member tool per action, with no beta header and no display size
+(coordinates are in screenshot pixels either way, and the screenshots you send
+establish that frame). Three things about the toolset are worth knowing when
+you write your own loop, and this repo's `loop.py` shows each:
+
+- **Member calls are ordinary `tool_use` blocks named after the action**
+  (`left_click`, `zoom`, …) with `toolset_name: "computer"` and no `action`
+  field in the input. `ToolCollection.run` routes on `(toolset_name, name)`
+  and folds the name back into `action`, so the explicit `ComputerTool` serves
+  both declarations. Every member — including `zoom`, which the toolset
+  enables by default — is implemented there.
+- **A turn may carry several member calls.** They run sequentially in block
+  order; after the first failure the rest are answered with
+  `is_error: true` and the contract's `"Not executed: …"` text rather than run,
+  since each later action assumed the earlier one worked. (This is the batching
+  `computer_batch` provides for the explicit tool, done natively.)
+- **Each member's `tool_result` must carry the same `toolset_name`** as its
+  `tool_use`; results for ordinary tools must not. `_tool_result_block` stamps
+  it, including on the `[interrupted by user]` results a Ctrl-C fills in.
+
+Vertex and Bedrock do not serve the toolset yet, so with those providers hosted
+mode falls back to the dated `computer_20250124` tool plus its beta header
+(`Config.hosted_computer` picks); the model then calls it as `name: "computer"`
+with `input.action`, which is the explicit tool's own shape.
 
 ## Providers
 

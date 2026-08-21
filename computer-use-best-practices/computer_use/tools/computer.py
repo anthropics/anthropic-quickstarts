@@ -8,14 +8,16 @@ is in physical pixels while its mouse functions take logical pixels, so we
 downscale to logical first.
 """
 
+import contextlib
 import subprocess
 import time
+from collections.abc import Iterator
 from typing import Any, ClassVar, Literal
 
 import pyautogui
 import Quartz
 
-from constants import HOSTED_COMPUTER_TOOL_TYPE
+from constants import HOSTED_COMPUTER_DATED_TYPE, HOSTED_COMPUTER_TOOLSET_TYPE
 
 from ..image import ScreenshotTooSmall, resize_and_encode, target_image_size
 from .base import Tool
@@ -52,6 +54,9 @@ Action = Literal[
     "wait",
     "zoom",
 ]
+
+# Upper bound of `key`'s repeat count; matches the hosted toolset's schema.
+KEY_REPEAT_MAX = 100
 
 # xdotool-style key names the model tends to emit -> pyautogui names.
 # Anything not listed here passes through unchanged.
@@ -91,6 +96,32 @@ def _unmapped_keys(keys: list[str]) -> list[str]:
 def _translate_key(k: str) -> str:
     k = k.strip().lower()
     return _KEY_ALIASES.get(k, k)
+
+
+def _modifiers(text: str | None) -> tuple[list[str], ToolResult | None]:
+    """Parse the optional modifier chord a pointer action carries in `text`
+    (e.g. "shift", "command+alt") into pyautogui key names, or an error result
+    naming any key macOS has no keycode for."""
+    mods = [_translate_key(k) for k in (text or "").split("+") if k]
+    if bad := _unmapped_keys(mods):
+        return mods, ToolResult(
+            error=f"unsupported modifier key(s) on macOS: {bad}; no keycode exists"
+        )
+    return mods, None
+
+
+@contextlib.contextmanager
+def _held(mods: list[str]) -> Iterator[None]:
+    """Hold `mods` down around a pointer action. Released in a finally so an
+    exception (or Ctrl-C) mid-action can't leave a modifier stuck down on the
+    user's real desktop."""
+    for m in mods:
+        pyautogui.keyDown(m)
+    try:
+        yield
+    finally:
+        for m in reversed(mods):
+            pyautogui.keyUp(m)
 
 
 # Characters that should be sent as real key events rather than unicode
@@ -137,17 +168,22 @@ class ComputerTool(Tool):
                 "description": (
                     "* screenshot: capture the screen.\n"
                     "* left_click / double_click / triple_click / right_click / "
-                    "middle_click: click at `coordinate`; optional `text` holds "
-                    "modifier keys (e.g. 'command') to hold during the click.\n"
+                    "middle_click: click at `coordinate` (or the current cursor "
+                    "position if omitted); optional `text` holds modifier keys "
+                    "(e.g. 'command') during the click.\n"
                     "* mouse_move: move cursor to `coordinate`.\n"
-                    "* left_click_drag: drag from `start_coordinate` to `coordinate`.\n"
-                    "* scroll: scroll at `coordinate` in `scroll_direction` by "
-                    "`scroll_amount` notches.\n"
+                    "* left_click_drag: drag from `start_coordinate` to `coordinate`; "
+                    "optional `text` holds modifier keys during the drag.\n"
+                    "* scroll: scroll at `coordinate` (or the current cursor position) "
+                    "in `scroll_direction` by `scroll_amount` notches; optional `text` "
+                    "holds modifier keys during the scroll.\n"
                     "* type: type literal `text` at the current focus.\n"
-                    "* key: press a chord like 'ctrl+shift+t' or a single key.\n"
+                    "* key: press a chord like 'ctrl+shift+t' or a single key, "
+                    "`repeat` times (default once).\n"
                     "* hold_key: hold the chord in `text` for `duration` seconds.\n"
                     "* left_mouse_down / left_mouse_up: press or release the left "
-                    "button at `coordinate` (for manual drags or long-press).\n"
+                    "button at `coordinate` (or the current cursor position), for "
+                    "manual drags or long-press.\n"
                     "* cursor_position: return the current cursor x,y.\n"
                     "* read_clipboard / write_clipboard: get/set clipboard `text`.\n"
                     "* wait: sleep `duration` seconds.\n"
@@ -170,6 +206,7 @@ class ComputerTool(Tool):
                 "maxItems": 2,
             },
             "text": {"type": "string"},
+            "repeat": {"type": "integer", "minimum": 1, "maximum": KEY_REPEAT_MAX},
             "scroll_direction": {"type": "string", "enum": ["up", "down", "left", "right"]},
             "scroll_amount": {"type": "integer", "minimum": 1},
             "duration": {"type": "number", "minimum": 0, "maximum": 60},
@@ -192,14 +229,25 @@ class ComputerTool(Tool):
         # to set them.
         self.sent_w, self.sent_h = target_image_size(self.screen_w, self.screen_h)
 
-    def to_hosted_param(self) -> dict[str, Any]:
-        """Return the server-hosted tool param. The server supplies the
-        description and input_schema; we only declare the type and the display
-        size (in screenshot pixels, since that is the coordinate space the model
-        sees and the server scales from)."""
+    def to_hosted_toolset_param(self) -> dict[str, Any]:
+        """The server-hosted toolset declaration (first-party API). One nameless
+        entry declares every action as a member tool; the server supplies all
+        descriptions and schemas. It takes no display size -- coordinates are in
+        screenshot pixels, which the screenshots themselves establish -- and
+        member calls come back as tool_use blocks named after the action with
+        toolset_name="computer" (routed by ToolCollection.run). Every member,
+        including `zoom` (enabled by default in the toolset), is implemented
+        below: the explicit action set is a superset of the toolset's."""
+        return {"type": HOSTED_COMPUTER_TOOLSET_TYPE}
+
+    def to_hosted_dated_param(self) -> dict[str, Any]:
+        """The server-hosted dated single-tool declaration (Vertex/Bedrock).
+        The server supplies the description and input_schema; we declare the
+        type and the display size in screenshot pixels, since that is the
+        coordinate space the model sees."""
         return {
-            "type": HOSTED_COMPUTER_TOOL_TYPE,
-            "name": "computer",
+            "type": HOSTED_COMPUTER_DATED_TYPE,
+            "name": self.name,
             "display_width_px": int(self.sent_w),
             "display_height_px": int(self.sent_h),
         }
@@ -251,6 +299,11 @@ class ComputerTool(Tool):
         if action == "screenshot":
             return self.take_screenshot()
 
+        # Pointer actions take an optional coordinate; omitted means "where the
+        # cursor already is" (the hosted toolset's members are declared that way).
+        coord: list[int] | None = kwargs.get("coordinate")
+        where = f" at {self._at(coord)}" if coord is not None else " at the cursor"
+
         if action in {
             "left_click",
             "double_click",
@@ -258,54 +311,60 @@ class ComputerTool(Tool):
             "right_click",
             "middle_click",
         }:
-            coord = kwargs["coordinate"]
-            x, y = self._scale_to_screen(coord)
             button = {"right_click": "right", "middle_click": "middle"}.get(action, "left")
             clicks = {"double_click": 2, "triple_click": 3}.get(action, 1)
-            mods = [_translate_key(k) for k in (kwargs.get("text") or "").split("+") if k]
-            if bad := _unmapped_keys(mods):
-                return ToolResult(
-                    error=f"unsupported modifier key(s) on macOS: {bad}; no keycode exists"
-                )
-            for m in mods:
-                pyautogui.keyDown(m)
-            try:
-                pyautogui.click(x, y, clicks=clicks, interval=0.05, button=button)
-            finally:
-                for m in reversed(mods):
-                    pyautogui.keyUp(m)
-            return ToolResult(output=f"{action} at {self._at(coord)}")
+            mods, err = _modifiers(kwargs.get("text"))
+            if err:
+                return err
+            if coord is not None:
+                pyautogui.moveTo(*self._scale_to_screen(coord))
+            with _held(mods):
+                pyautogui.click(clicks=clicks, interval=0.05, button=button)
+            return ToolResult(output=f"{action}{where}")
 
         if action in {"left_mouse_down", "left_mouse_up"}:
-            coord = kwargs["coordinate"]
-            pyautogui.moveTo(*self._scale_to_screen(coord))
+            if coord is not None:
+                pyautogui.moveTo(*self._scale_to_screen(coord))
             if action == "left_mouse_down":
                 pyautogui.mouseDown(button="left")
             else:
                 pyautogui.mouseUp(button="left")
-            return ToolResult(output=f"{action} at {self._at(coord)}")
+            return ToolResult(output=f"{action}{where}")
 
         if action == "mouse_move":
-            coord = kwargs["coordinate"]
+            if coord is None:
+                return ToolResult(error="mouse_move requires `coordinate`")
             pyautogui.moveTo(*self._scale_to_screen(coord))
             return ToolResult(output=f"moved to {self._at(coord)}")
 
         if action == "left_click_drag":
-            start, end = kwargs["start_coordinate"], kwargs["coordinate"]
+            start = kwargs.get("start_coordinate")
+            if start is None or coord is None:
+                return ToolResult(
+                    error="left_click_drag requires `start_coordinate` and `coordinate`"
+                )
+            mods, err = _modifiers(kwargs.get("text"))
+            if err:
+                return err
             pyautogui.moveTo(*self._scale_to_screen(start))
-            pyautogui.dragTo(*self._scale_to_screen(end), duration=0.3, button="left")
-            return ToolResult(output=f"dragged {self._at(start)} -> {self._at(end)}")
+            with _held(mods):
+                pyautogui.dragTo(*self._scale_to_screen(coord), duration=0.3, button="left")
+            return ToolResult(output=f"dragged {self._at(start)} -> {self._at(coord)}")
 
         if action == "scroll":
-            coord = kwargs["coordinate"]
             amount = kwargs.get("scroll_amount", 3)
             direction = kwargs["scroll_direction"]
-            pyautogui.moveTo(*self._scale_to_screen(coord))
-            if direction in {"up", "down"}:
-                pyautogui.scroll(amount if direction == "up" else -amount)
-            else:
-                pyautogui.hscroll(amount if direction == "right" else -amount)
-            return ToolResult(output=f"scrolled {direction} by {amount} at {self._at(coord)}")
+            mods, err = _modifiers(kwargs.get("text"))
+            if err:
+                return err
+            if coord is not None:
+                pyautogui.moveTo(*self._scale_to_screen(coord))
+            with _held(mods):
+                if direction in {"up", "down"}:
+                    pyautogui.scroll(amount if direction == "up" else -amount)
+                else:
+                    pyautogui.hscroll(amount if direction == "right" else -amount)
+            return ToolResult(output=f"scrolled {direction} by {amount}{where}")
 
         if action == "type":
             _type_text(kwargs["text"], interval=0.01)
@@ -320,8 +379,13 @@ class ComputerTool(Tool):
                         f"keycode for these. Use a macOS equivalent or omit them."
                     )
                 )
-            pyautogui.hotkey(*keys)
-            return ToolResult(output=f"pressed {'+'.join(keys)}")
+            repeat = kwargs.get("repeat", 1)
+            if not isinstance(repeat, int) or not 1 <= repeat <= KEY_REPEAT_MAX:
+                return ToolResult(error=f"`repeat` must be an integer in 1..{KEY_REPEAT_MAX}")
+            for _ in range(repeat):
+                pyautogui.hotkey(*keys)
+            times = f" x{repeat}" if repeat > 1 else ""
+            return ToolResult(output=f"pressed {'+'.join(keys)}{times}")
 
         if action == "hold_key":
             keys = [_translate_key(k) for k in kwargs["text"].split("+")]
