@@ -20,23 +20,25 @@ It contains three components:
 from agents.agent import Agent
 from agents.tools.think import ThinkTool
 
-# Create an agent with both local tools and MCP server tools
+# Create an agent with local tools and a remote MCP server
 agent = Agent(
     name="MyAgent",
     system="You are a helpful assistant.",
     tools=[ThinkTool()],  # Local tools
     mcp_servers=[
         {
-            "type": "stdio",
-            "command": "python",
-            "args": ["-m", "mcp_server"],
+            "type": "streamable_http",
+            "url": "https://docs.xquik.com/mcp",
         },
     ]
 )
 
 # Run the agent
-response = agent.run("What should I consider when buying a new laptop?")
+response = agent.run("How does Xquik search public X posts?")
 ```
+
+Use `stdio` for local MCP servers. Use `streamable_http` for current remote
+servers. The legacy `sse` type remains available for older servers.
 
 From this foundation, you can add domain-specific tools, optimize performance, or implement custom response handling. We remain deliberately unopinionated - this backbone simply gets you started with fundamentals.
 
