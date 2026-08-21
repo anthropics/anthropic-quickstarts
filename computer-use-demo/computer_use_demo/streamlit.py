@@ -322,6 +322,18 @@ async def main():
         model_conf = _lookup_model_conf(st.session_state.model)
         thinking_modes = model_conf.thinking_modes
         st.session_state.thinking_modes = thinking_modes
+        # The three thinking widgets below render conditionally, and Streamlit
+        # deletes a widget's session_state key at the end of any run that
+        # doesn't render it (e.g. picking "Off" removes the effort slider and,
+        # with it, `thinking_effort`). Re-assigning the keys each run detaches
+        # them from the widget lifecycle so the sampling loop can always read
+        # them; the defaults cover a key that was already dropped.
+        for key, default in (
+            ("thinking_mode", thinking_modes[0]),
+            ("thinking_effort", "medium"),
+            ("thinking_budget", int(model_conf.default_output_tokens / 2)),
+        ):
+            st.session_state[key] = st.session_state.get(key, default)
         if st.session_state.thinking_mode not in thinking_modes:
             st.session_state.thinking_mode = thinking_modes[0]
         if model_conf is DEFAULT_MODEL_CONF:
