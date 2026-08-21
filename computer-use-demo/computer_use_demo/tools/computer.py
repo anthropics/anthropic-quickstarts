@@ -589,9 +589,16 @@ class ComputerToolset20260801(ComputerTool20251124):
         if action not in self.member_names:
             raise ToolError(f"Invalid member tool: {action}")
 
-        if action == "key" and repeat is not None:
+        if action == "key":
+            # The member's text is a single key or +-joined chord and repeat
+            # defaults to 1, so an omitted repeat takes the same quoted path
+            # rather than the inherited unquoted `xdotool key -- {text}`.
             if text is None:
                 raise ToolError(f"text is required for {action}")
+            if kwargs.get("coordinate") is not None:
+                raise ToolError(f"coordinate is not accepted for {action}")
+            if repeat is None:
+                repeat = KEY_REPEAT_MIN
             if (
                 not isinstance(repeat, int)
                 or not KEY_REPEAT_MIN <= repeat <= KEY_REPEAT_MAX

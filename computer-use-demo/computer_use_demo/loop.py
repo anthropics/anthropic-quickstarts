@@ -16,6 +16,7 @@ from anthropic import (
     APIError,
     APIResponseValidationError,
     APIStatusError,
+    omit,
 )
 from anthropic.types.beta import (
     BetaCacheControlEphemeralParam,
@@ -170,7 +171,9 @@ async def sampling_loop(
                 model=model,
                 system=[system],
                 tools=tool_collection.to_params(),
-                betas=betas,
+                # The toolset group has no beta flag, so on Vertex/Bedrock the
+                # list can be empty; omit the header rather than send it blank.
+                betas=betas or omit,
                 extra_body=extra_body,
             )
         except (APIStatusError, APIResponseValidationError) as e:

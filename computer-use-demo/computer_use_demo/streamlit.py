@@ -13,7 +13,7 @@ from datetime import datetime, timedelta
 from enum import StrEnum
 from functools import partial
 from pathlib import PosixPath
-from typing import cast, get_args
+from typing import Any, cast, get_args
 
 import httpx
 import streamlit as st
@@ -472,19 +472,23 @@ def maybe_add_interruption_blocks():
     # and we should annotate the conversation with additional context for the model and heal any incomplete tool use calls
     result = []
     last_message = st.session_state.messages[-1]
-    previous_tool_use_ids = [
-        block["id"] for block in last_message["content"] if block["type"] == "tool_use"
+    previous_tool_uses = [
+        block for block in last_message["content"] if block["type"] == "tool_use"
     ]
-    for tool_use_id in previous_tool_use_ids:
-        st.session_state.tools[tool_use_id] = ToolResult(error=INTERRUPT_TOOL_ERROR)
-        result.append(
-            BetaToolResultBlockParam(
-                tool_use_id=tool_use_id,
-                type="tool_result",
-                content=INTERRUPT_TOOL_ERROR,
-                is_error=True,
-            )
+    for tool_use in previous_tool_uses:
+        st.session_state.tools[tool_use["id"]] = ToolResult(error=INTERRUPT_TOOL_ERROR)
+        block = BetaToolResultBlockParam(
+            tool_use_id=tool_use["id"],
+            type="tool_result",
+            content=INTERRUPT_TOOL_ERROR,
+            is_error=True,
         )
+        # A toolset member call's result must carry the same toolset_name as
+        # the tool_use it answers (see _make_api_tool_result in loop.py).
+        toolset_name = cast(dict[str, Any], tool_use).get("toolset_name")
+        if toolset_name is not None:
+            cast(dict[str, Any], block)["toolset_name"] = toolset_name
+        result.append(block)
     result.append(BetaTextBlockParam(type="text", text=INTERRUPT_TEXT))
     return result
 

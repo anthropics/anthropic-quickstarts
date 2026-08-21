@@ -1,6 +1,7 @@
 from typing import Any, cast
 from unittest import mock
 
+from anthropic import omit
 from anthropic.types import TextBlock, ToolUseBlock
 from anthropic.types.beta import (
     BetaMessage,
@@ -9,7 +10,11 @@ from anthropic.types.beta import (
     BetaToolUseBlock,
 )
 
-from computer_use_demo.loop import APIProvider, sampling_loop
+from computer_use_demo.loop import (
+    PROMPT_CACHING_BETA_FLAG,
+    APIProvider,
+    sampling_loop,
+)
 
 
 async def test_loop():
@@ -87,22 +92,24 @@ async def _run_loop_and_get_request_kwargs(**loop_kwargs):
 
     with (
         mock.patch("computer_use_demo.loop.Anthropic", return_value=client),
+        mock.patch("computer_use_demo.loop.AnthropicVertex", return_value=client),
+        mock.patch("computer_use_demo.loop.AnthropicBedrock", return_value=client),
         mock.patch(
             "computer_use_demo.loop.ToolCollection", return_value=mock.AsyncMock()
         ),
     ):
-        await sampling_loop(
-            model="test-model",
-            provider=APIProvider.ANTHROPIC,
-            system_prompt_suffix="",
-            messages=[{"role": "user", "content": "Test message"}],
-            output_callback=mock.Mock(),
-            tool_output_callback=mock.Mock(),
-            api_response_callback=mock.Mock(),
-            api_key="test-key",
-            tool_version="computer_use_20250124",
-            **loop_kwargs,
-        )
+        defaults = {
+            "model": "test-model",
+            "provider": APIProvider.ANTHROPIC,
+            "system_prompt_suffix": "",
+            "messages": [{"role": "user", "content": "Test message"}],
+            "output_callback": mock.Mock(),
+            "tool_output_callback": mock.Mock(),
+            "api_response_callback": mock.Mock(),
+            "api_key": "test-key",
+            "tool_version": "computer_use_20250124",
+        }
+        await sampling_loop(**{**defaults, **loop_kwargs})
     return client.beta.messages.with_raw_response.create.call_args.kwargs
 
 
@@ -128,6 +135,22 @@ async def test_loop_extended_thinking_sends_budget():
     assert kwargs["extra_body"] == {
         "thinking": {"type": "enabled", "budget_tokens": 2048}
     }
+
+
+async def test_loop_toolset_sends_no_beta_header_without_flags():
+    """The toolset group has no beta flag. Off the first-party API nothing else
+    adds one, so the betas param must be omitted rather than sent empty."""
+    kwargs = await _run_loop_and_get_request_kwargs(
+        provider=APIProvider.VERTEX, tool_version="computer_toolset_20260801"
+    )
+    assert kwargs["betas"] is omit
+
+
+async def test_loop_toolset_on_anthropic_keeps_prompt_caching_beta():
+    kwargs = await _run_loop_and_get_request_kwargs(
+        tool_version="computer_toolset_20260801"
+    )
+    assert kwargs["betas"] == [PROMPT_CACHING_BETA_FLAG]
 
 
 async def test_loop_toolset_member_calls_run_sequentially_and_stop_on_failure():

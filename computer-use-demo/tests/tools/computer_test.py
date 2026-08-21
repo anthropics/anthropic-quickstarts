@@ -176,6 +176,24 @@ async def test_computer_toolset_key_repeat_quotes_each_key(computer_toolset):
 
 
 @pytest.mark.asyncio
+async def test_computer_toolset_key_without_repeat_takes_the_quoted_path(
+    computer_toolset,
+):
+    with patch.object(computer_toolset, "shell", new_callable=AsyncMock) as mock_shell:
+        mock_shell.return_value = ToolResult(output="Pressed")
+        await computer_toolset(action="key", text="ctrl+shift+(")
+        mock_shell.assert_called_once_with(
+            f"{computer_toolset.xdotool} key -- 'ctrl+shift+('"
+        )
+
+
+@pytest.mark.asyncio
+async def test_computer_toolset_key_rejects_coordinate(computer_toolset):
+    with pytest.raises(ToolError, match="coordinate is not accepted"):
+        await computer_toolset(action="key", text="a", coordinate=[1, 2])
+
+
+@pytest.mark.asyncio
 async def test_computer_toolset_key_repeat_out_of_bounds(computer_toolset):
     with pytest.raises(ToolError, match="must be an integer between 1 and 100"):
         await computer_toolset(action="key", text="Down", repeat=101)
