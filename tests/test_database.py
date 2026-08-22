@@ -66,6 +66,10 @@ class TestSessions:
         listed = await sessions.list_all()
 
         assert {session.id for session in listed} == {first.id, second.id}
+        # Asserted as an ordering rather than an exact sequence: two sessions
+        # created in the same microsecond tie, and the tiebreak is by id.
+        timestamps = [session.created_at for session in listed]
+        assert timestamps == sorted(timestamps, reverse=True)
 
     async def test_status_changes_are_kept(self, db):
         sessions = SessionRepository(db)
