@@ -1,6 +1,7 @@
 """Drives Anthropic's sampling loop and reports it as `shared.events`."""
 
 import asyncio
+from collections.abc import Iterable
 from dataclasses import dataclass
 from typing import Any, Protocol
 from uuid import UUID, uuid4
@@ -59,6 +60,21 @@ def finalize_on_completion(
     task.add_done_callback(on_done)
 
 
+async def cancel_active_runs(runs: Iterable[Run]) -> None:
+    """Stop runs still in flight and wait for them to finish unwinding.
+
+    Cancelling rather than abandoning is what lets `finalize_on_completion` run,
+    so a client on the stream is told the run was cancelled instead of waiting
+    for an end that is never coming.
+    """
+    active = [run for run in runs if run.active]
+    for run in active:
+        run.task.cancel()
+    # return_exceptions keeps the cancellations we just asked for from
+    # propagating out of a shutdown path.
+    await asyncio.gather(*(run.task for run in active), return_exceptions=True)
+
+
 class Runner(Protocol):
     """What the API needs from a runner, so the fake can stand in for the real one."""
 
@@ -67,6 +83,8 @@ class Runner(Protocol):
     def get_run(self, run_id: UUID) -> Run | None: ...
 
     async def cancel(self, run_id: UUID) -> bool: ...
+
+    async def shutdown(self) -> None: ...
 
 
 class EventEmitter:
@@ -179,6 +197,10 @@ class AgentWorker:
             return False
         run.task.cancel()
         return True
+
+    async def shutdown(self) -> None:
+        """Stop the desktop's work when the process is going away."""
+        await cancel_active_runs(self._runs.values())
 
     async def _drive(self, prompt: str, emitter: EventEmitter) -> None:
         """Cancellation and buffer closure are handled by `finalize_on_completion`."""
