@@ -1,0 +1,2 @@
+-r requirements.txt
+anthropic>=0.39.0
