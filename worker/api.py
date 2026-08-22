@@ -4,7 +4,8 @@ Both the real worker and the fake are assembled here, so the fake cannot drift
 from the contract the backend is written against.
 """
 
-from collections.abc import Callable
+from collections.abc import AsyncIterator, Callable
+from contextlib import asynccontextmanager
 from typing import Annotated
 from uuid import UUID
 
@@ -43,10 +44,20 @@ def _resume_index(request: Request, from_index: int) -> int:
 
 
 def create_app(build_runner: Callable[[], Runner], *, title: str) -> FastAPI:
-    app = FastAPI(title=title, version="0.1.0")
-    # Built here rather than in a lifespan hook: the runner needs no async
-    # setup, and this keeps the app usable from an ASGI test transport, which
-    # does not run lifespan events.
+    @asynccontextmanager
+    async def lifespan(app: FastAPI) -> AsyncIterator[None]:
+        try:
+            yield
+        finally:
+            # Leaving a run to be torn down with the loop would abandon the
+            # agent mid-task and leave anyone reading its stream waiting for a
+            # terminal event that never arrives.
+            await app.state.runner.shutdown()
+
+    app = FastAPI(title=title, version="0.1.0", lifespan=lifespan)
+    # Construction stays out of the lifespan because the runner needs no async
+    # setup, and an app that is complete before startup is easier to drive from
+    # a test transport. Stopping it does need to await, so that half is above.
     app.state.runner = build_runner()
 
     def runner_of(request: Request) -> Runner:

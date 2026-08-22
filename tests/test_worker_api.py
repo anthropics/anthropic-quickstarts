@@ -5,9 +5,11 @@ also pin the shapes the backend will be written against.
 """
 
 import json
-from uuid import uuid4
+from contextlib import asynccontextmanager
+from uuid import UUID, uuid4
 
 import pytest
+from asgi_lifespan import LifespanManager
 from httpx import ASGITransport, AsyncClient
 
 from shared.events import AssistantText, EventType, RunFinished, ToolUse
@@ -20,8 +22,21 @@ SCRIPT = [
 ]
 
 
-def client_for(app):
-    return AsyncClient(transport=ASGITransport(app=app), base_url="http://worker")
+@asynccontextmanager
+async def client_for(app):
+    """A client that also runs the app's lifespan.
+
+    The ASGI transport does not send lifespan events by itself, so without this
+    the shutdown path would go untested — and a test that leaves a run in flight
+    would abandon its task when the loop closes.
+    """
+    async with (
+        LifespanManager(app) as manager,
+        AsyncClient(
+            transport=ASGITransport(app=manager.app), base_url="http://worker"
+        ) as client,
+    ):
+        yield client
 
 
 def parse_sse(body: str) -> list[dict]:
@@ -164,6 +179,19 @@ async def test_cancelling_a_run_reports_it_as_cancelled():
 
     assert cancel.status_code == 202
     assert parse_sse(response.text)[-1]["event"] == EventType.RUN_CANCELLED
+
+
+async def test_shutdown_ends_a_run_still_in_flight():
+    """A worker going away has to end its run rather than abandon it."""
+    app = create_fake_worker(SCRIPT, delay=0.05)
+    async with client_for(app) as client:
+        run_id = await start_run(client)
+        run = app.state.runner.get_run(UUID(run_id))
+        assert run.active
+
+    assert not run.active
+    assert run.buffer.closed
+    assert run.buffer.snapshot()[-1].payload.type == EventType.RUN_CANCELLED
 
 
 async def test_cancelling_a_finished_run_conflicts():

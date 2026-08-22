@@ -19,7 +19,12 @@ from shared.events import (
     WorkerEvent,
 )
 from worker.api import create_app
-from worker.runner import Run, RunInProgress, finalize_on_completion
+from worker.runner import (
+    Run,
+    RunInProgress,
+    cancel_active_runs,
+    finalize_on_completion,
+)
 from worker.streaming import EventBuffer
 
 
@@ -61,6 +66,9 @@ class FakeRunner:
             return False
         run.task.cancel()
         return True
+
+    async def shutdown(self) -> None:
+        await cancel_active_runs(self._runs.values())
 
     async def _replay(self, session_id: UUID, buffer: EventBuffer) -> None:
         """Cancellation and buffer closure are handled by `finalize_on_completion`."""
