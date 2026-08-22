@@ -2,7 +2,6 @@
 
 import base64
 from collections.abc import Sequence
-from datetime import UTC, datetime
 from uuid import UUID
 
 from sqlalchemy import func, select, update
@@ -30,11 +29,6 @@ class SessionNotFound(Exception):
     def __init__(self, session_id: UUID) -> None:
         super().__init__(f"unknown session {session_id}")
         self.session_id = session_id
-
-
-def _as_utc(value: datetime) -> datetime:
-    """SQLite discards timezones on write, so restore UTC on the way out."""
-    return value if value.tzinfo is not None else value.replace(tzinfo=UTC)
 
 
 class SessionRepository:
@@ -137,7 +131,7 @@ class EventRepository:
             Event(
                 session_id=row.session_id,
                 seq=row.seq,
-                ts=_as_utc(row.ts),
+                ts=row.ts,
                 payload=row.payload,
             )
             for row in result.scalars()

@@ -16,6 +16,8 @@ from backend.database import (
     SessionRepository,
     SessionStatus,
     WorkerRepository,
+    create_engine,
+    create_schema,
 )
 from shared.events import (
     AssistantText,
@@ -64,6 +66,10 @@ class TestSessions:
         listed = await sessions.list_all()
 
         assert {session.id for session in listed} == {first.id, second.id}
+        # Asserted as an ordering rather than an exact sequence: two sessions
+        # created in the same microsecond tie, and the tiebreak is by id.
+        timestamps = [session.created_at for session in listed]
+        assert timestamps == sorted(timestamps, reverse=True)
 
     async def test_status_changes_are_kept(self, db):
         sessions = SessionRepository(db)
@@ -327,6 +333,28 @@ class TestScreenshotHandover:
         (event,) = await events.list_for_session(session.id)
 
         assert isinstance(event.payload.screenshot, ScreenshotRef)
+
+
+class TestEngineSetup:
+    async def test_a_missing_database_directory_is_created(self, tmp_path):
+        """The default config puts the file under ./data, absent on a fresh checkout."""
+        target = tmp_path / "not" / "yet" / "app.db"
+        engine = create_engine(f"sqlite+aiosqlite:///{target}")
+
+        try:
+            await create_schema(engine)
+        finally:
+            await engine.dispose()
+
+        assert target.is_file()
+
+    async def test_an_in_memory_database_needs_no_directory(self):
+        engine = create_engine("sqlite+aiosqlite://")
+
+        try:
+            await create_schema(engine)
+        finally:
+            await engine.dispose()
 
 
 class TestPostgresDialect:

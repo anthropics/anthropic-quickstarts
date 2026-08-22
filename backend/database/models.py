@@ -8,10 +8,12 @@ from uuid import UUID, uuid4
 from sqlalchemy import (
     JSON,
     DateTime,
+    Dialect,
     Enum,
     ForeignKey,
     Integer,
     String,
+    TypeDecorator,
     UniqueConstraint,
     Uuid,
 )
@@ -33,6 +35,32 @@ class SessionStatus(StrEnum):
 
 def _utcnow() -> datetime:
     return datetime.now(tz=UTC)
+
+
+class UtcDateTime(TypeDecorator[datetime]):
+    """A timestamp that is timezone-aware on the way out, on every backend.
+
+    SQLite has nowhere to keep an offset, so without this a naive datetime
+    leaks out of the database and every reader has to remember to repair it —
+    including the API, where a timestamp without a zone is simply wrong.
+    """
+
+    impl = DateTime(timezone=True)
+    cache_ok = True
+
+    def process_bind_param(
+        self, value: datetime | None, dialect: Dialect
+    ) -> datetime | None:
+        if value is None:
+            return None
+        return value.astimezone(UTC) if value.tzinfo else value.replace(tzinfo=UTC)
+
+    def process_result_value(
+        self, value: datetime | None, dialect: Dialect
+    ) -> datetime | None:
+        if value is None:
+            return None
+        return value if value.tzinfo else value.replace(tzinfo=UTC)
 
 
 def _enum_column(enum_cls: type[StrEnum]) -> Enum:
@@ -65,11 +93,9 @@ class AgentSession(Base):
     # The next event position to hand out. Reserved by an atomic increment so
     # two writers cannot claim the same one; see EventRepository.append.
     next_seq: Mapped[int] = mapped_column(Integer, default=0)
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), default=_utcnow
-    )
+    created_at: Mapped[datetime] = mapped_column(UtcDateTime(), default=_utcnow)
     updated_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), default=_utcnow, onupdate=_utcnow
+        UtcDateTime(), default=_utcnow, onupdate=_utcnow
     )
 
 
@@ -91,7 +117,7 @@ class SessionEvent(Base):
     event_type: Mapped[EventType] = mapped_column(
         "type", _enum_column(EventType), index=True
     )
-    ts: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    ts: Mapped[datetime] = mapped_column(UtcDateTime())
     # JSONB where it exists, so payloads can be queried and indexed; plain JSON
     # keeps SQLite working for tests.
     payload: Mapped[dict[str, Any]] = mapped_column(
@@ -118,9 +144,5 @@ class Worker(Base):
         default=None,
         index=True,
     )
-    claimed_at: Mapped[datetime | None] = mapped_column(
-        DateTime(timezone=True), default=None
-    )
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), default=_utcnow
-    )
+    claimed_at: Mapped[datetime | None] = mapped_column(UtcDateTime(), default=None)
+    created_at: Mapped[datetime] = mapped_column(UtcDateTime(), default=_utcnow)
