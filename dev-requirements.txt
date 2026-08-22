@@ -1,4 +1,5 @@
 -r worker-requirements.txt
+aiosqlite>=0.20
 asgi-lifespan>=2.1
 httpx>=0.27
 pytest==8.3.3

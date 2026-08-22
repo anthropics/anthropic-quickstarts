@@ -182,12 +182,27 @@ or interrupts.
 Persists chat history so it survives restarts and can be read by a
 client that was not connected when the task ran.
 
-Worth deciding early: screenshots arrive as base64 PNGs inside tool
-results and they are large and frequent. Storing them inline in the same
-rows as the text will make history queries expensive.
+Three tables: `sessions`, `events`, and `workers` — the last being the
+pool registry the session manager claims from. Postgres in deployment,
+SQLite in tests, reached through SQLAlchemy's async engine.
 
-**Open:** engine and access layer; whether screenshots go in the
-database, on disk, or in object storage with a reference in the row.
+Every event carries a `seq`, its position in its session. Positions are
+handed out by incrementing a counter on the session row in the UPDATE
+itself and returning the result, so two writers appending at once get
+disjoint ranges instead of both reading the same maximum. A unique
+constraint on `(session_id, seq)` is the backstop. This matters because
+the stream and the persisted history have to agree on ordering for a
+reconnecting client to resume without gaps or repeats.
+
+Screenshots arrive as base64 PNGs inside tool results, and they are
+large and frequent. They are written to a blob store on the way in and
+the row keeps only a reference, so reading history stays cheap for the
+common case of wanting the text. The store is content-addressed by
+digest, which collapses the many identical screenshots a run produces
+when the screen does not change between steps.
+
+**Deferred:** migrations. Tables are created directly while the schema
+is still moving; a migration tool is the right answer once it settles.
 
 ### Streaming
 
@@ -227,5 +242,4 @@ Collected from above, roughly in the order they need answering:
    the Docker layout, and VNC routing.
 2. How upstream gets imported, given it is not a package.
 3. WebSocket or SSE for progress.
-4. Database engine, and where screenshots live.
-5. Behaviour when a prompt arrives for a session that is already running.
+4. Behaviour when a prompt arrives for a session that is already running.
