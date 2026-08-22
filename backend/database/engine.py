@@ -1,6 +1,8 @@
 """Engine and session-factory wiring."""
 
-from sqlalchemy import event
+from pathlib import Path
+
+from sqlalchemy import event, make_url
 from sqlalchemy.ext.asyncio import (
     AsyncEngine,
     AsyncSession,
@@ -12,10 +14,25 @@ from backend.database.models import Base
 
 
 def create_engine(url: str, *, echo: bool = False) -> AsyncEngine:
-    engine = create_async_engine(url, echo=echo)
-    if url.startswith("sqlite"):
+    parsed = make_url(url)
+    on_sqlite = parsed.get_backend_name() == "sqlite"
+    if on_sqlite:
+        _ensure_database_directory(parsed.database)
+    engine = create_async_engine(parsed, echo=echo)
+    if on_sqlite:
         _enable_sqlite_foreign_keys(engine)
     return engine
+
+
+def _ensure_database_directory(database: str | None) -> None:
+    """SQLite does not create a missing directory, it just fails to open.
+
+    The default configuration puts the file under ./data, so without this a
+    first run on a fresh checkout dies during startup.
+    """
+    if not database or database == ":memory:":
+        return
+    Path(database).parent.mkdir(parents=True, exist_ok=True)
 
 
 def _enable_sqlite_foreign_keys(engine: AsyncEngine) -> None:
