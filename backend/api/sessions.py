@@ -7,7 +7,7 @@ to a session and watching it work arrive with the session manager.
 from typing import Annotated
 from uuid import UUID
 
-from fastapi import APIRouter, Query, Response, status
+from fastapi import APIRouter, Query, Request, Response, status
 
 from backend.api.dependencies import Sessions
 from backend.api.schemas import SessionCreate, SessionRead
@@ -41,7 +41,10 @@ async def read_session(session_id: UUID, sessions: Sessions) -> SessionRead:
 
 
 @router.delete("/{session_id}", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_session(session_id: UUID, sessions: Sessions) -> Response:
+async def delete_session(
+    session_id: UUID, sessions: Sessions, request: Request
+) -> Response:
     """Removes the session and, by cascade, its event history."""
     await sessions.delete(session_id)
+    request.app.state.event_bus.close(session_id)
     return Response(status_code=status.HTTP_204_NO_CONTENT)

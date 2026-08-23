@@ -206,15 +206,21 @@ is still moving; a migration tool is the right answer once it settles.
 
 ### Streaming
 
-Carries progress to clients as it happens, fed from the three upstream
-callbacks. Needs to handle a client that connects late or reconnects
-mid-task, which means the stream and the persisted history have to agree
-on ordering — most simply by having the stream replay from the database
-rather than being a separate path.
+`GET /sessions/{id}/events` is an SSE stream. A client that connects
+late, or drops and comes back, starts from a `seq` (`from` or
+`Last-Event-ID`) and is replayed out of the database, then handed to a
+per-session bus for events that have not happened yet. The stream and
+the rows agree on order because they share `seq`: the bus is subscribed
+before history is read, so an event persisted during that read cannot
+open a gap, and anything already yielded is skipped on the live tail.
 
-**Open:** WebSocket or SSE. SSE is a better fit for one-way progress and
-is simpler to proxy; WebSocket is worth it only if clients need to send
-on the same channel.
+The stream stays open across runs. A session can be prompted more than
+once, and closing on `run_finished` would force every client to
+reconnect for the next prompt.
+
+A subscriber that falls behind is dropped rather than allowed to grow
+an unbounded queue; it reconnects and replays. Idle connections get a
+comment keepalive so proxies do not close them.
 
 ### VNC
 
@@ -241,5 +247,4 @@ Collected from above, roughly in the order they need answering:
 1. Deployment topology (A, B, or C) — determines the concurrency model,
    the Docker layout, and VNC routing.
 2. How upstream gets imported, given it is not a package.
-3. WebSocket or SSE for progress.
-4. Behaviour when a prompt arrives for a session that is already running.
+3. Behaviour when a prompt arrives for a session that is already running.
