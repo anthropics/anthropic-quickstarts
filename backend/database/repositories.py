@@ -8,7 +8,13 @@ from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.database.blobs import BlobStore
-from backend.database.models import AgentSession, SessionEvent, SessionStatus, Worker
+from backend.database.models import (
+    AgentSession,
+    SessionEvent,
+    SessionStatus,
+    Worker,
+    _utcnow,
+)
 from shared.events import (
     Event,
     EventPayload,
@@ -29,6 +35,20 @@ class SessionNotFound(Exception):
     def __init__(self, session_id: UUID) -> None:
         super().__init__(f"unknown session {session_id}")
         self.session_id = session_id
+
+
+class SessionBusy(Exception):
+    """A prompt arrived while this session already has a run in flight."""
+
+    def __init__(self, session_id: UUID, status: SessionStatus) -> None:
+        super().__init__(f"session {session_id} is {status}")
+        self.session_id = session_id
+        self.status = status
+
+
+class PoolExhausted(Exception):
+    def __init__(self) -> None:
+        super().__init__("no free workers")
 
 
 class SessionRepository:
@@ -63,6 +83,29 @@ class SessionRepository:
         session.status = status
         await self._db.flush()
         return session
+
+    async def try_begin_run(self, session_id: UUID) -> None:
+        """ACTIVE → RUNNING, or refuse. The UPDATE is the lock.
+
+        Two prompts that both read ACTIVE and then write RUNNING would both
+        proceed; flipping the status in the WHERE clause means only one writer
+        wins and the other sees the session as busy.
+        """
+        result = await self._db.execute(
+            update(AgentSession)
+            .where(
+                AgentSession.id == session_id,
+                AgentSession.status == SessionStatus.ACTIVE,
+            )
+            .values(status=SessionStatus.RUNNING)
+            .returning(AgentSession.id)
+        )
+        if result.first() is not None:
+            return
+        session = await self._db.get(AgentSession, session_id)
+        if session is None:
+            raise SessionNotFound(session_id)
+        raise SessionBusy(session_id, session.status)
 
     async def delete(self, session_id: UUID) -> None:
         session = await self.get(session_id)
@@ -213,3 +256,48 @@ class WorkerRepository:
             select(Worker).where(Worker.session_id == session_id)
         )
         return result.scalar_one_or_none()
+
+    async def claim(self, session_id: UUID) -> Worker | None:
+        """Bind one free worker to `session_id`, or return None if the pool is empty.
+
+        The free row is chosen in a subquery so the UPDATE is a single atomic
+        assignment. Postgres adds `FOR UPDATE SKIP LOCKED` so two claimers
+        waiting on the same pool take different rows instead of queueing on
+        one; SQLite serialises writers and does not understand SKIP LOCKED.
+        """
+        result = await self._db.execute(
+            update(Worker)
+            .where(Worker.id == _free_worker_id(skip_locked=self._postgres))
+            .values(session_id=session_id, claimed_at=_utcnow())
+            .returning(Worker.id)
+        )
+        row = result.first()
+        if row is None:
+            return None
+        return await self._db.get(Worker, row[0])
+
+    async def release(self, session_id: UUID) -> None:
+        await self._db.execute(
+            update(Worker)
+            .where(Worker.session_id == session_id)
+            .values(session_id=None, claimed_at=None)
+        )
+        await self._db.flush()
+
+    @property
+    def _postgres(self) -> bool:
+        bind = self._db.bind
+        return bind is not None and bind.dialect.name == "postgresql"
+
+
+def _free_worker_id(*, skip_locked: bool):
+    """The next unbound worker, optionally skipping rows another claimer holds."""
+    statement = (
+        select(Worker.id)
+        .where(Worker.session_id.is_(None))
+        .order_by(Worker.created_at, Worker.id)
+        .limit(1)
+    )
+    if skip_locked:
+        statement = statement.with_for_update(skip_locked=True)
+    return statement.scalar_subquery()

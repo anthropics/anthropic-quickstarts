@@ -13,6 +13,8 @@ from backend.database.models import (
 )
 from backend.database.repositories import (
     EventRepository,
+    PoolExhausted,
+    SessionBusy,
     SessionNotFound,
     SessionRepository,
     WorkerRepository,
@@ -24,6 +26,8 @@ __all__ = [
     "BlobStore",
     "EventRepository",
     "FilesystemBlobStore",
+    "PoolExhausted",
+    "SessionBusy",
     "SessionEvent",
     "SessionNotFound",
     "SessionRepository",

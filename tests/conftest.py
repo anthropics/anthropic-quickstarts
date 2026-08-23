@@ -83,15 +83,9 @@ def _free_port() -> int:
         return int(sock.getsockname()[1])
 
 
-@pytest.fixture
-async def live_backend(settings):
-    """A real HTTP server.
-
-    httpx's ASGI transport does not yield from an open-ended `StreamingResponse`
-    until the generator finishes, so SSE tests that read N frames and leave the
-    connection open have to go through a socket.
-    """
-    app = create_app(settings)
+@asynccontextmanager
+async def serve_app(app):
+    """Run an ASGI app on a real port until the caller is done."""
     port = _free_port()
     server = uvicorn.Server(
         uvicorn.Config(app, host="127.0.0.1", port=port, log_level="warning")
@@ -104,11 +98,25 @@ async def live_backend(settings):
             break
         await asyncio.sleep(0.05)
     else:
-        raise RuntimeError("backend did not start")
-    async with AsyncClient(base_url=f"http://127.0.0.1:{port}", timeout=None) as client:
-        yield app, client
-    server.should_exit = True
-    await task
+        raise RuntimeError("server did not start")
+    try:
+        yield f"http://127.0.0.1:{port}", app
+    finally:
+        server.should_exit = True
+        await task
+
+
+@pytest.fixture
+async def live_backend(settings):
+    """A real HTTP server.
+
+    httpx's ASGI transport does not yield from an open-ended `StreamingResponse`
+    until the generator finishes, so SSE tests that read N frames and leave the
+    connection open have to go through a socket.
+    """
+    async with serve_app(create_app(settings)) as (url, app):
+        async with AsyncClient(base_url=url, timeout=None) as client:
+            yield app, client
 
 
 @asynccontextmanager

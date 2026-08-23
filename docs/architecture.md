@@ -163,19 +163,21 @@ Each of these is a requirement in disguise.
 ### Session manager
 
 Owns the lifecycle: create, look up, list, cancel, destroy. A session
-pairs a conversation with a desktop, so creating one has to provision
-or claim a desktop and release it on teardown.
+pairs a conversation with a desktop. The first prompt claims a worker
+from the pool; later prompts on the same session reuse it, because the
+conversation lives on that worker. The desktop goes back to the pool
+when the session is deleted.
 
-This is where the concurrency requirement is actually met, so it needs
-to be explicit about what is shared. The message list passed to
-`sampling_loop()` is mutated in place as the loop runs, so it must
-belong to exactly one session and one running task. Two requests
-against the same session — a second prompt arriving while the loop is
-still going, or a cancel racing a completion — are the cases to design
-against.
+A second prompt while a run is in flight is rejected with `409`. Queuing
+would hide backpressure; interrupting would throw away work. The lock
+is the session row itself: `ACTIVE → RUNNING` in the UPDATE's WHERE
+clause, so two writers cannot both proceed.
 
-**Open:** whether a second prompt to a busy session queues, is rejected,
-or interrupts.
+An empty pool is `503` with `Retry-After`. Postgres claims a free
+worker with `SELECT ... FOR UPDATE SKIP LOCKED` so two sessions take
+different desktops instead of queueing on one row. SQLite serialises
+writers and does not understand `SKIP LOCKED`; the same UPDATE still
+assigns at most one session per worker.
 
 ### Database
 
@@ -247,4 +249,3 @@ Collected from above, roughly in the order they need answering:
 1. Deployment topology (A, B, or C) — determines the concurrency model,
    the Docker layout, and VNC routing.
 2. How upstream gets imported, given it is not a package.
-3. Behaviour when a prompt arrives for a session that is already running.

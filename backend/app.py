@@ -11,10 +11,12 @@ from backend.api.sessions import router as sessions_router
 from backend.config import Settings
 from backend.database import (
     FilesystemBlobStore,
+    WorkerRepository,
     create_engine,
     create_schema,
     create_session_factory,
 )
+from backend.sessions import PoolAllocator
 from backend.streaming import EventBus, EventPublisher
 
 
@@ -33,11 +35,19 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             resolved.blob_dir, url_prefix=resolved.blob_url_prefix
         )
         bus = EventBus()
+        allocator = PoolAllocator(factory)
+        if resolved.worker_urls:
+            async with factory() as db:
+                workers = WorkerRepository(db)
+                for index, url in enumerate(resolved.worker_urls, start=1):
+                    await workers.register(name=f"worker-{index}", base_url=url)
+                await db.commit()
         app.state.settings = resolved
         app.state.session_factory = factory
         app.state.blobs = blobs
         app.state.event_bus = bus
         app.state.event_publisher = EventPublisher(factory, blobs, bus)
+        app.state.allocator = allocator
         try:
             yield
         finally:
