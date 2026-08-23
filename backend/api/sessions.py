@@ -45,6 +45,7 @@ async def delete_session(
     session_id: UUID, sessions: Sessions, request: Request
 ) -> Response:
     """Removes the session and, by cascade, its event history."""
+    await request.app.state.session_manager.cancel(session_id)
     await request.app.state.allocator.release(session_id)
     await sessions.delete(session_id)
     request.app.state.event_bus.close(session_id)

@@ -179,6 +179,12 @@ different desktops instead of queueing on one row. SQLite serialises
 writers and does not understand `SKIP LOCKED`; the same UPDATE still
 assigns at most one session per worker.
 
+`POST /sessions/{id}/messages` is the prompt path: bind, start a run on
+the worker, and copy each event through `EventPublisher` so it is
+numbered, persisted, screenshot-rewritten, and fanned out to the SSE
+stream. The worker stays bound after the run so the next prompt keeps
+the same conversation.
+
 ### Database
 
 Persists chat history so it survives restarts and can be read by a

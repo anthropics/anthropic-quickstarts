@@ -4,6 +4,7 @@ from fastapi import FastAPI, Request, status
 from fastapi.responses import JSONResponse
 
 from backend.database import PoolExhausted, SessionBusy, SessionNotFound
+from backend.sessions import WorkerUnreachable
 
 
 def install_error_handlers(app: FastAPI) -> None:
@@ -27,4 +28,10 @@ def install_error_handlers(app: FastAPI) -> None:
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             content={"detail": str(exc)},
             headers={"Retry-After": retry_after},
+        )
+
+    @app.exception_handler(WorkerUnreachable)
+    async def worker_unreachable(_: Request, exc: WorkerUnreachable) -> JSONResponse:
+        return JSONResponse(
+            status_code=status.HTTP_502_BAD_GATEWAY, content={"detail": str(exc)}
         )

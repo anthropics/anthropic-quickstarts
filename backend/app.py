@@ -3,10 +3,12 @@
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
+import httpx
 from fastapi import FastAPI
 
 from backend.api.errors import install_error_handlers
 from backend.api.events import router as events_router
+from backend.api.messages import router as messages_router
 from backend.api.sessions import router as sessions_router
 from backend.config import Settings
 from backend.database import (
@@ -16,7 +18,7 @@ from backend.database import (
     create_schema,
     create_session_factory,
 )
-from backend.sessions import PoolAllocator
+from backend.sessions import PoolAllocator, SessionManager
 from backend.streaming import EventBus, EventPublisher
 
 
@@ -42,15 +44,20 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                 for index, url in enumerate(resolved.worker_urls, start=1):
                     await workers.register(name=f"worker-{index}", base_url=url)
                 await db.commit()
+        publisher = EventPublisher(factory, blobs, bus)
+        http = httpx.AsyncClient(timeout=httpx.Timeout(None, connect=5.0))
+        manager = SessionManager(allocator, publisher, http)
         app.state.settings = resolved
         app.state.session_factory = factory
         app.state.blobs = blobs
         app.state.event_bus = bus
-        app.state.event_publisher = EventPublisher(factory, blobs, bus)
+        app.state.event_publisher = publisher
         app.state.allocator = allocator
+        app.state.session_manager = manager
         try:
             yield
         finally:
+            await manager.shutdown()
             bus.close_all()
             await engine.dispose()
 
@@ -60,6 +67,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     install_error_handlers(app)
     app.include_router(sessions_router)
     app.include_router(events_router)
+    app.include_router(messages_router)
 
     @app.get("/health")
     async def health() -> dict[str, str]:

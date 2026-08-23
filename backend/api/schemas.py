@@ -12,6 +12,15 @@ class SessionCreate(BaseModel):
     title: str | None = Field(default=None, max_length=200)
 
 
+class MessageCreate(BaseModel):
+    prompt: str = Field(min_length=1)
+
+
+class MessageAccepted(BaseModel):
+    session_id: UUID
+    run_id: UUID
+
+
 class SessionRead(BaseModel):
     """A session as clients see it, built straight from the row."""
 
