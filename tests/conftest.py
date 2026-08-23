@@ -1,6 +1,9 @@
+import asyncio
+import socket
 from contextlib import asynccontextmanager
 
 import pytest
+import uvicorn
 from asgi_lifespan import LifespanManager
 from httpx import ASGITransport, AsyncClient
 
@@ -49,10 +52,63 @@ def settings(tmp_path):
 
 
 @pytest.fixture
-async def api_client(settings):
+async def _started_app(settings):
+    """FastAPI plus the ASGI wrapper that actually runs its lifespan."""
+    app = create_app(settings)
+    async with LifespanManager(app) as manager:
+        yield app, manager.app
+
+
+@pytest.fixture
+def api_app(_started_app):
+    """The running app, so tests can reach the event publisher and the bus."""
+    return _started_app[0]
+
+
+@pytest.fixture
+async def api_client(_started_app):
     """A client for a fully started app, lifespan included."""
-    async with client_for(create_app(settings)) as client:
+    _app, asgi = _started_app
+    async with AsyncClient(
+        transport=ASGITransport(app=asgi),
+        base_url="http://backend",
+        timeout=None,
+    ) as client:
         yield client
+
+
+def _free_port() -> int:
+    with socket.socket() as sock:
+        sock.bind(("127.0.0.1", 0))
+        return int(sock.getsockname()[1])
+
+
+@pytest.fixture
+async def live_backend(settings):
+    """A real HTTP server.
+
+    httpx's ASGI transport does not yield from an open-ended `StreamingResponse`
+    until the generator finishes, so SSE tests that read N frames and leave the
+    connection open have to go through a socket.
+    """
+    app = create_app(settings)
+    port = _free_port()
+    server = uvicorn.Server(
+        uvicorn.Config(app, host="127.0.0.1", port=port, log_level="warning")
+    )
+    # Already inside pytest's loop; installing handlers would fail.
+    server.install_signal_handlers = False
+    task = asyncio.create_task(server.serve())
+    for _ in range(100):
+        if server.started:
+            break
+        await asyncio.sleep(0.05)
+    else:
+        raise RuntimeError("backend did not start")
+    async with AsyncClient(base_url=f"http://127.0.0.1:{port}", timeout=None) as client:
+        yield app, client
+    server.should_exit = True
+    await task
 
 
 @asynccontextmanager
@@ -61,7 +117,9 @@ async def client_for(app):
     async with (
         LifespanManager(app) as manager,
         AsyncClient(
-            transport=ASGITransport(app=manager.app), base_url="http://backend"
+            transport=ASGITransport(app=manager.app),
+            base_url="http://backend",
+            timeout=None,
         ) as client,
     ):
         yield client

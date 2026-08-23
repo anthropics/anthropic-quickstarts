@@ -6,9 +6,16 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 
 from backend.api.errors import install_error_handlers
+from backend.api.events import router as events_router
 from backend.api.sessions import router as sessions_router
 from backend.config import Settings
-from backend.database import create_engine, create_schema, create_session_factory
+from backend.database import (
+    FilesystemBlobStore,
+    create_engine,
+    create_schema,
+    create_session_factory,
+)
+from backend.streaming import EventBus, EventPublisher
 
 
 def create_app(settings: Settings | None = None) -> FastAPI:
@@ -21,11 +28,20 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         # rather than to import time.
         engine = create_engine(resolved.database_url)
         await create_schema(engine)
+        factory = create_session_factory(engine)
+        blobs = FilesystemBlobStore(
+            resolved.blob_dir, url_prefix=resolved.blob_url_prefix
+        )
+        bus = EventBus()
         app.state.settings = resolved
-        app.state.session_factory = create_session_factory(engine)
+        app.state.session_factory = factory
+        app.state.blobs = blobs
+        app.state.event_bus = bus
+        app.state.event_publisher = EventPublisher(factory, blobs, bus)
         try:
             yield
         finally:
+            bus.close_all()
             await engine.dispose()
 
     app = FastAPI(
@@ -33,6 +49,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     )
     install_error_handlers(app)
     app.include_router(sessions_router)
+    app.include_router(events_router)
 
     @app.get("/health")
     async def health() -> dict[str, str]:
