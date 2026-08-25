@@ -2,11 +2,12 @@
 
 from abc import ABC, abstractmethod
 from contextlib import AsyncExitStack
-from typing import Any
+from typing import Any, cast
 
 from mcp import ClientSession, StdioServerParameters
 from mcp.client.sse import sse_client
 from mcp.client.stdio import stdio_client
+from mcp.client.streamable_http import streamable_http_client
 
 from ..tools.mcp_tool import MCPTool
 
@@ -15,22 +16,23 @@ class MCPConnection(ABC):
     """Base class for MCP server connections."""
 
     def __init__(self):
-        self.session = None
-        self._rw_ctx = None
-        self._session_ctx = None
+        self.session: ClientSession | None = None
+        self._rw_ctx: Any = None
+        self._session_ctx: Any = None
 
     @abstractmethod
-    async def _create_rw_context(self):
+    async def _create_rw_context(self) -> Any:
         """Create the read/write context based on connection type."""
 
     async def __aenter__(self):
         """Initialize MCP server connection."""
         self._rw_ctx = await self._create_rw_context()
         read_write = await self._rw_ctx.__aenter__()
-        read, write = read_write
+        read, write = read_write[:2]
         self._session_ctx = ClientSession(read, write)
-        self.session = await self._session_ctx.__aenter__()
-        await self.session.initialize()
+        session = await self._session_ctx.__aenter__()
+        self.session = session
+        await session.initialize()
         return self
 
     async def __aexit__(self, exc_type, exc_val, exc_tb):
@@ -49,25 +51,30 @@ class MCPConnection(ABC):
 
     async def list_tools(self) -> Any:
         """Retrieve available tools from the MCP server."""
-        response = await self.session.list_tools()
+        response = await cast(ClientSession, self.session).list_tools()
         return response.tools
 
     async def call_tool(
         self, tool_name: str, arguments: dict[str, Any]
     ) -> Any:
         """Call a tool on the MCP server with provided arguments."""
-        return await self.session.call_tool(tool_name, arguments=arguments)
+        return await cast(ClientSession, self.session).call_tool(
+            tool_name, arguments=arguments
+        )
 
 
 class MCPConnectionStdio(MCPConnection):
     """MCP connection using standard input/output."""
 
     def __init__(
-        self, command: str, args: list[str] = [], env: dict[str, str] = None
+        self,
+        command: str,
+        args: list[str] | None = None,
+        env: dict[str, str] | None = None,
     ):
         super().__init__()
         self.command = command
-        self.args = args
+        self.args = args or []
         self.env = env
 
     async def _create_rw_context(self):
@@ -81,13 +88,24 @@ class MCPConnectionStdio(MCPConnection):
 class MCPConnectionSSE(MCPConnection):
     """MCP connection using Server-Sent Events."""
 
-    def __init__(self, url: str, headers: dict[str, str] = None):
+    def __init__(self, url: str, headers: dict[str, str] | None = None):
         super().__init__()
         self.url = url
         self.headers = headers or {}
 
     async def _create_rw_context(self):
         return sse_client(url=self.url, headers=self.headers)
+
+
+class MCPConnectionStreamableHTTP(MCPConnection):
+    """MCP connection using Streamable HTTP."""
+
+    def __init__(self, url: str):
+        super().__init__()
+        self.url = url
+
+    async def _create_rw_context(self):
+        return streamable_http_client(url=self.url)
 
 
 def create_mcp_connection(config: dict[str, Any]) -> MCPConnection:
@@ -109,6 +127,11 @@ def create_mcp_connection(config: dict[str, Any]) -> MCPConnection:
         return MCPConnectionSSE(
             url=config["url"], headers=config.get("headers")
         )
+
+    elif conn_type == "streamable_http":
+        if not config.get("url"):
+            raise ValueError("URL is required for Streamable HTTP connections")
+        return MCPConnectionStreamableHTTP(url=config["url"])
 
     else:
         raise ValueError(f"Unsupported connection type: {conn_type}")
