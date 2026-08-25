@@ -6,7 +6,7 @@ The Chat SDK is a universal chat layer: one type-safe handler, 15+ adapters, fro
 
 The server stores nothing: the `useChat` conversation ID is a Managed Agents session ID. The sidebar is the sessions API. Transcripts replay from the session's event log. Compaction and prompt caching happen inside the session.
 
-Swapping a few lines in `src/bot.ts` moves the analyst to another surface: set up the platform's app following the [adapter docs](https://chat-sdk.dev/adapters), then see the porting notes (`skill.md`, "Two held streams, no webhooks"). Design notes live in [`CLAUDE.md`](./CLAUDE.md) and [`skill.md`](./skill.md). Vercel's [knowledge base guide](https://vercel.com/kb/guide/claude-managed-agents-chat-sdk) covers the same integration from the Chat SDK side.
+Swapping a few lines in `src/bot.ts` moves the analyst to another surface: set up the platform's app following the [adapter docs](https://chat-sdk.dev/adapters), then see the porting notes (`skill.md`, "Two held streams, no webhooks"). That port is already done for Slack as a deployable template ("The same analyst in Slack", below). Design notes live in [`CLAUDE.md`](./CLAUDE.md) and [`skill.md`](./skill.md).
 
 ## Quickstart
 
@@ -54,7 +54,23 @@ The agent's entire identity (name, model, and system prompt) lives in `setup/age
 
 - The demo `getUser` in `src/bot.ts` trusts every caller, which is why the default bind is loopback. Replace it with your real session lookup before setting `HOST`, and keep platform-level access protection on any deploy that ships before it. See "getUser is the security boundary" in `skill.md`.
 - `npm start` with `HOST=0.0.0.0`. One long-lived process, streams held as long as a turn needs.
-- The `/api` routes are one platform-neutral [Hono](https://hono.dev/) app (`src/app.ts`) that drops into any host that can run a fetch handler: mount `deployedApi()` and serve the page statically. Caveats live in `skill.md`, "Deploying off the Node server".
+- The `/api` routes are one platform-neutral [Hono](https://hono.dev/) app (`src/app.ts`), so this runs anywhere that can host a Hono app: mount `deployedApi()` and serve the page statically. The binding constraint is duration rather than runtime, since `/api/chat` stays open for the whole turn and serverless caps are often seconds. The [Vercel Services guide](https://vercel.com/kb/guide/claude-managed-agents-vercel-services) works that through end to end: the page and the API as two [services](https://vercel.com/docs/services) in one project, `vercel.json` rewrites for `/api/*`, the function max duration a held response needs, and the `server.ts` and Vite config this repo does not ship.
+
+## The same analyst in Slack
+
+[`vercel-labs/cma-chat-sdk`](https://github.com/vercel-labs/cma-chat-sdk) is this analyst on Slack.
+
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.fyi/cma-and-chat-sdk-template)
+
+The deploy flow helps you create a Slack app and Redis store, then asks for `ANTHROPIC_API_KEY`, `CLAUDE_AGENT_ID`, and `CLAUDE_ENVIRONMENT_ID`. Get them from the [Claude Console](https://platform.claude.com/) or run the template's setup script for the last two.
+
+Clone the repository you created from the template, then ask Claude to help you customize it:
+
+```bash
+git clone https://github.com/<your-account>/claude-research-analyst
+cd claude-research-analyst
+claude "retune the analyst's model and system prompt, then publish the new version"
+```
 
 ## Files
 
@@ -73,3 +89,10 @@ The agent's entire identity (name, model, and system prompt) lives in `setup/age
 | `src/activity.ts` | In-process fan-out of turn activity to live subscribers |
 | `web/` | The chat page: React + `useChat`, the sidebar, the activity feed, bundled by esbuild |
 | `skill.md` | Setup walkthrough, gotchas, debugging |
+
+## Resources
+
+- [Build Claude Managed Agents with Vercel Services guide](https://vercel.com/kb/guide/claude-managed-agents-vercel-services)
+- [Build Claude Managed Agents with Chat SDK guide](https://vercel.com/kb/guide/claude-managed-agents-chat-sdk)
+- [Claude Managed Agents documentation](https://platform.claude.com/docs/en/managed-agents/overview)
+- [Chat SDK documentation](https://chat-sdk.dev/docs)
