@@ -7,8 +7,12 @@ session. In `docker/` the container runs `ant beta:worker run` with the
 environment key. In `docker-memory/` the container runs the Python SDK's
 `EnvironmentWorker` (`worker.py`) with only a per-session token, and the
 session's memory store is mounted at `/mnt/memory/<slug>` and synced back.
-`README.md` here and in each directory has the design. This file is the
-runbook.
+`archil/` has the same host side (`on-work.py` instead of `on-work.sh`)
+but runs each session in an Archil persistent sandbox with a shared EDGAR
+disk instead of a local container: see its README for the extra Archil
+credentials, `pip install -r requirements.txt`, and the one-time
+`python seed.py` data load. `README.md` here and in each directory has the
+design. This file is the runbook.
 
 ## When the user asks to set one up, get it working, or debug it
 
