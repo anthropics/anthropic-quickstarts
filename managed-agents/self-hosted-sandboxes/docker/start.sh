@@ -27,11 +27,14 @@ for bin in docker jq ant; do
 done
 
 if [ -f .env ]; then set -a; . ./.env; set +a; fi
-if [ -z "${ANTHROPIC_ENVIRONMENT_ID:-}" ] && [ -f claude-lock.json ]; then
+# CLAUDE_ENVIRONMENT_ID is where this demo's earlier setup.sh flow kept the ID;
+# honoring it lets a returning user keep their environment and its key.
+ANTHROPIC_ENVIRONMENT_ID="${ANTHROPIC_ENVIRONMENT_ID:-${CLAUDE_ENVIRONMENT_ID:-}}"
+if [ -z "$ANTHROPIC_ENVIRONMENT_ID" ] && [ -f claude-lock.json ]; then
   ANTHROPIC_ENVIRONMENT_ID=$(jq -r '.resources["./environments/self-hosted.yaml"].id // empty' claude-lock.json)
 fi
 export ANTHROPIC_ENVIRONMENT_ID
-: "${ANTHROPIC_ENVIRONMENT_ID:?run 'ant apply .' here first (it writes claude-lock.json), or export ANTHROPIC_ENVIRONMENT_ID (env_...)}"
+: "${ANTHROPIC_ENVIRONMENT_ID:?no environment ID: run \"ant apply .\" from this directory so claude-lock.json lands beside start.sh, or export ANTHROPIC_ENVIRONMENT_ID (env_...)}"
 : "${ANTHROPIC_ENVIRONMENT_KEY:?set ANTHROPIC_ENVIRONMENT_KEY in .env (mint it in the Console for ${ANTHROPIC_ENVIRONMENT_ID})}"
 export ANTHROPIC_ENVIRONMENT_KEY
 export ANTHROPIC_BASE_URL="${ANTHROPIC_BASE_URL:-https://api.anthropic.com}"

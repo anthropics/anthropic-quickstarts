@@ -23,7 +23,7 @@ if [ -z "${ANTHROPIC_ENVIRONMENT_ID:-}" ] && [ -f claude-lock.json ]; then
   ANTHROPIC_ENVIRONMENT_ID=$(jq -r '.resources["./environments/self-hosted.yaml"].id // empty' claude-lock.json)
 fi
 export ANTHROPIC_ENVIRONMENT_ID
-: "${ANTHROPIC_ENVIRONMENT_ID:?run 'ant apply .' here first (it writes claude-lock.json), or export ANTHROPIC_ENVIRONMENT_ID (env_...)}"
+: "${ANTHROPIC_ENVIRONMENT_ID:?no environment ID: run \"ant apply .\" from this directory so claude-lock.json lands beside start.sh, or export ANTHROPIC_ENVIRONMENT_ID (env_...)}"
 : "${ANTHROPIC_ENVIRONMENT_KEY:?set ANTHROPIC_ENVIRONMENT_KEY in .env (mint it in the Console for ${ANTHROPIC_ENVIRONMENT_ID})}"
 : "${ARCHIL_API_KEY:?set ARCHIL_API_KEY in .env}"
 : "${ARCHIL_MOUNT_TOKEN:?set ARCHIL_MOUNT_TOKEN in .env}"

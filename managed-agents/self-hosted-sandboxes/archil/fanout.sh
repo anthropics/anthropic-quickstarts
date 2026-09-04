@@ -6,13 +6,15 @@
 #   ./fanout.sh "Tesla" "Venture Global (NYSE: VG)" "Sanjit Biswas, CEO of Samsara"
 set -euo pipefail
 cd "$(dirname "$0")"
-[ -f claude-lock.json ] || { echo "no claude-lock.json: run 'ant apply .' here first" >&2; exit 1; }
+[ -f claude-lock.json ] || { echo "no claude-lock.json: run 'ant apply .' from this directory first" >&2; exit 1; }
 [ -f .env ] || { echo "no .env: copy .env.example to .env and fill it in" >&2; exit 1; }
 set -a; . ./.env; set +a
 
 # The agent and environment `ant apply` created, by the files that declare them.
-agent=$(jq -r '.resources["./agents/edgar-analyst.md"].id' claude-lock.json)
-environment=$(jq -r '.resources["./environments/self-hosted.yaml"].id' claude-lock.json)
+agent=$(jq -r '.resources["./agents/edgar-analyst.md"].id // empty' claude-lock.json)
+environment=$(jq -r '.resources["./environments/self-hosted.yaml"].id // empty' claude-lock.json)
+: "${agent:?claude-lock.json has no agent yet: run \"ant apply .\" again}" \
+  "${environment:?claude-lock.json has no environment yet: run \"ant apply .\" again}"
 
 for subject in "$@"; do
   session=$(ant beta:sessions create --agent "$agent" --environment-id "$environment" \
